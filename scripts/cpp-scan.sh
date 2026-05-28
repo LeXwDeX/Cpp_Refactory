@@ -180,7 +180,7 @@ file_line_stats() {
         -not -path "*/build/*" -not -path "*/.git/*" -not -path "*/third_party/*" -not -path "*/vendor/*" -not -path "*/node_modules/*" \
         2>/dev/null | while read -r f; do
         wc -l "$f"
-    done | sort -rn | head -20
+    done | sort -rn | head -20 || true
 
     echo ""
 
@@ -238,7 +238,7 @@ function_length_stats() {
         }
         { if (in_func) func_length++ }
         ' "$f" 2>/dev/null
-    done | sort -rn | head -20
+    done | sort -rn | head -20 || true
 
     echo ""
     echo "  （仅显示超过 100 行的函数，按长度降序排列）"
@@ -250,7 +250,7 @@ include_dependency_stats() {
 
     rg -oIN '#include\s*[<"]([^>"]+)[>"]' --replace '$1' \
         --glob '*.cpp' --glob '*.cxx' --glob '*.cc' --glob '*.h' --glob '*.hpp' --glob '*.hxx' \
-        "$TARGET" 2>/dev/null | sort | uniq -c | sort -rn | head -20
+        "$TARGET" 2>/dev/null | sort | uniq -c | sort -rn | head -20 || true
 
     echo ""
     echo "  （数字为被 #include 的次数）"
@@ -278,7 +278,7 @@ conditional_compilation_stats() {
             density=$(awk "BEGIN { printf \"%.1f\", ($ifdefs / $lines) * 100 }")
             echo "$ifdefs $density% $lines $f"
         fi
-    done | sort -rn | head -15 | awk '{ printf "  %4d 条件编译指令  密度 %s  (%s 行)  %s\n", $1, $2, $3, $4 }'
+    done | sort -rn | head -15 | awk '{ printf "  %4d 条件编译指令  密度 %s  (%s 行)  %s\n", $1, $2, $3, $4 }' || true
 
     echo ""
 
@@ -331,6 +331,50 @@ smell_indicators() {
     echo "    约 $c_casts 处"
 }
 
+# ── 7. CodeGraph 索引状态 ────────────────────────────────
+codegraph_status() {
+    separator "7. CodeGraph 索引状态"
+
+    if ! command -v codegraph &>/dev/null; then
+        echo "  ⚠ codegraph 未安装，跳过索引状态检查"
+        echo "  安装: npm install -g @anthropic/codegraph"
+        return
+    fi
+
+    local cg_dir="$TARGET/.codegraph"
+    if [[ ! -d "$cg_dir" ]]; then
+        echo "  ⚠ 项目未初始化 codegraph 索引"
+        echo "  初始化: codegraph init $TARGET"
+        return
+    fi
+
+    echo "  索引位置: $cg_dir"
+    echo ""
+
+    # 调用 codegraph status 获取索引信息
+    local status_output
+    status_output=$(codegraph status "$TARGET" 2>/dev/null || true)
+
+    if [[ -n "$status_output" ]]; then
+        # 提取关键指标
+        local files nodes edges
+        files=$(echo "$status_output" | grep -oP 'Files:\s+\K[\d,]+' | head -1 | tr -d ',' || echo "?")
+        nodes=$(echo "$status_output" | grep -oP 'Nodes:\s+\K[\d,]+' | head -1 | tr -d ',' || echo "?")
+        edges=$(echo "$status_output" | grep -oP 'Edges:\s+\K[\d,]+' | head -1 | tr -d ',' || echo "?")
+
+        echo "  文件数: $files"
+        echo "  节点数: $nodes"
+        echo "  边数:   $edges"
+        echo ""
+
+        # 显示节点类型分布
+        echo "  节点类型分布:"
+        echo "$status_output" | grep -E '^\s+(method|class|struct|function|variable|import|type_alias|constant|interface|enum|route|component)' | head -10 | sed 's/^/    /' || true
+    else
+        echo "  ⚠ 无法获取 codegraph 状态"
+    fi
+}
+
 # ── 主流程 ────────────────────────────────────────────────
 main() {
     echo "╔══════════════════════════════════════════════════════════╗"
@@ -345,6 +389,7 @@ main() {
     include_dependency_stats
     conditional_compilation_stats
     smell_indicators
+    codegraph_status
 
     separator "扫描完成"
     echo "  后续步骤："

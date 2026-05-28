@@ -35,7 +35,13 @@ function shellTool(
                 })
                 return stdout + (stderr ? `\n[stderr] ${stderr}` : "")
             } catch (err: any) {
-                return `[ERROR] ${err.message}\n${err.stderr ?? ""}`
+                const stdout = err.stdout ?? ""
+                const stderr = err.stderr ?? ""
+                const exitCode = err.code ?? "unknown"
+                if (stdout) {
+                    return stdout + (stderr ? `\n[stderr] ${stderr}` : "") + `\n[exit code: ${exitCode}]`
+                }
+                return `[ERROR] Command failed with exit code ${exitCode}\n${stderr}`
             }
         },
     }

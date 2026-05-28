@@ -132,7 +132,7 @@ scan_macros() {
     echo "  === 使用的宏名称统计 ==="
     search_pattern '#\s*(ifdef|ifndef)\s+(\w+)' | \
         rg -oI '#\s*(ifdef|ifndef)\s+(\w+)' --replace '$2' 2>/dev/null | \
-        sort | uniq -c | sort -rn | head -15
+        sort | uniq -c | sort -rn | head -15 || true
 
     echo ""
     echo "  === 功能性宏定义（非头文件守卫） ==="
@@ -290,6 +290,85 @@ scan_ub_risks() {
     echo "  （存在边界常量引用说明可能有边界处理，但也需要验证）"
 }
 
+# ── 9. CodeGraph 影响分析 ────────────────────────────────
+scan_codegraph_impact() {
+    separator "9. CodeGraph 影响分析"
+
+    if ! command -v codegraph &>/dev/null; then
+        echo "  ⚠ codegraph 未安装，跳过影响分析"
+        return
+    fi
+
+    # 检测 .codegraph 索引
+    local project_root="$TARGET"
+    if [[ "$IS_FILE" == "true" ]]; then
+        project_root=$(dirname "$TARGET")
+    fi
+
+    # 向上查找 .codegraph 目录
+    local cg_dir=""
+    local search_dir="$project_root"
+    while [[ "$search_dir" != "/" ]]; do
+        if [[ -d "$search_dir/.codegraph" ]]; then
+            cg_dir="$search_dir/.codegraph"
+            break
+        fi
+        search_dir=$(dirname "$search_dir")
+    done
+
+    if [[ -z "$cg_dir" ]]; then
+        echo "  ⚠ 未找到 .codegraph 索引"
+        echo "  初始化: codegraph init $project_root"
+        return
+    fi
+
+    echo "  索引位置: $cg_dir"
+    echo ""
+
+    # 提取关键符号（类、函数）进行分析
+    local symbols=()
+
+    if [[ "$IS_FILE" == "true" ]]; then
+        # 从文件中提取类名和函数名
+        while IFS= read -r sym; do
+            [[ -n "$sym" ]] && symbols+=("$sym")
+        done < <(rg -oN '(class|struct)\s+\K\w+' "$TARGET" 2>/dev/null | head -5 || true)
+
+        while IFS= read -r sym; do
+            [[ -n "$sym" ]] && symbols+=("$sym")
+        done < <(rg -oN '^\w[\w:<>*& ]+\s+\K\w+(?=\s*\()' "$TARGET" 2>/dev/null | head -5 || true)
+    else
+        # 从目录中提取 Top 符号
+        while IFS= read -r sym; do
+            [[ -n "$sym" ]] && symbols+=("$sym")
+        done < <(rg -oN '(class|struct)\s+\K\w+' "${RG_GLOB_ARGS[@]}" "$TARGET" 2>/dev/null | sort | uniq -c | sort -rn | head -5 | awk '{print $2}' || true)
+    fi
+
+    if [[ ${#symbols[@]} -eq 0 ]]; then
+        echo "  未提取到可分析的符号"
+        return
+    fi
+
+    echo "  分析 ${#symbols[@]} 个关键符号的影响范围:"
+    echo ""
+
+    for sym in "${symbols[@]}"; do
+        local impact_output
+        impact_output=$(codegraph impact "$sym" "$project_root" 2>/dev/null || true)
+
+        if [[ -n "$impact_output" ]]; then
+            # 提取受影响数量
+            local affected_count
+            affected_count=$(echo "$impact_output" | grep -c "→" || echo "0")
+            echo "  [$sym] 影响 $affected_count 个符号"
+            echo "$impact_output" | head -5 | sed 's/^/    /' || true
+            echo ""
+        else
+            echo "  [$sym] 无影响数据（可能是新符号或索引未更新）"
+        fi
+    done
+}
+
 # ── 主流程 ────────────────────────────────────────────────
 main() {
     local target_desc
@@ -316,6 +395,7 @@ main() {
     scan_encapsulation
     scan_casts
     scan_ub_risks
+    scan_codegraph_impact
 
     separator "接缝扫描完成"
     echo ""
@@ -328,6 +408,7 @@ main() {
     echo "  - 封装破坏：参见第 6 节"
     echo "  - 危险类型转换：参见第 7 节"
     echo "  - UB 风险点：参见第 8 节"
+    echo "  - CodeGraph 影响分析：参见第 9 节"
     echo ""
     echo "  后续步骤："
     echo "  1. 根据接缝位置划定分区边界"

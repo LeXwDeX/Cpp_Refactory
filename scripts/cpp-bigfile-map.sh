@@ -329,8 +329,64 @@ generate_report() {
         fi
         echo ""
 
-        # ── 9. Agent 操作指南 ──────────────────────
-        echo "## 9. Agent 操作指南"
+        # ── 9. CodeGraph 调用关系分析 ────────────────
+        echo "## 9. CodeGraph 调用关系分析"
+        echo ""
+
+        if command -v codegraph &>/dev/null; then
+            # 查找 .codegraph 索引
+            local cg_found=0
+            local search_dir
+            search_dir=$(dirname "$SOURCE_ABS")
+            while [[ "$search_dir" != "/" ]]; do
+                if [[ -d "$search_dir/.codegraph" ]]; then
+                    cg_found=1
+                    break
+                fi
+                search_dir=$(dirname "$search_dir")
+            done
+
+            if [[ $cg_found -eq 1 ]]; then
+                # 提取 Top 3 上帝函数进行调用关系分析
+                local top_gods
+                top_gods=$(printf '%s\n' "$fns_data" | awk -F'\t' 'NF >= 3 { print $3 }' | head -3)
+
+                if [[ -n "$top_gods" ]]; then
+                    echo "### Top 上帝函数调用关系"
+                    echo ""
+
+                    while IFS= read -r god_fn; do
+                        [[ -z "$god_fn" ]] && continue
+                        echo "#### \`$god_fn\`"
+                        echo ""
+
+                        # callers
+                        echo "**调用者 (callers):**"
+                        echo '```'
+                        codegraph callers "$god_fn" "$search_dir" 2>/dev/null | head -10 || echo "  (无数据)"
+                        echo '```'
+                        echo ""
+
+                        # callees
+                        echo "**被调用者 (callees):**"
+                        echo '```'
+                        codegraph callees "$god_fn" "$search_dir" 2>/dev/null | head -10 || echo "  (无数据)"
+                        echo '```'
+                        echo ""
+                    done <<< "$top_gods"
+                else
+                    echo "（未提取到可分析的函数）"
+                fi
+            else
+                echo "⚠ 未找到 .codegraph 索引。运行 \`codegraph init\` 初始化。"
+            fi
+        else
+            echo "⚠ codegraph 未安装。安装: \`npm install -g @anthropic/codegraph\`"
+        fi
+        echo ""
+
+        # ── 10. Agent 操作指南 ──────────────────────
+        echo "## 10. Agent 操作指南"
         echo ""
         echo "**禁止**：\`Read $SOURCE_ABS\`（消耗 ~$((TOTAL_LINES * 40 / 1000))K tokens，会爆上下文）"
         echo ""

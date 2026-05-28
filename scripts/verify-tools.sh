@@ -25,7 +25,7 @@ check() {
   shift
   if ! command -v "${1}" &>/dev/null 2>&1; then
     echo -e "  ${YELLOW}SKIP${NC}  ${label}  (未安装)"
-    ((SKIP++))
+    SKIP=$((SKIP + 1))
     return
   fi
   if "$@" &>/dev/null 2>&1; then
