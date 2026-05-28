@@ -1,5 +1,5 @@
 import type { Plugin } from "@opencode-ai/plugin"
-import { buildSessionContext, formatSessionContext } from "./lib/hooks/session-lifecycle.js"
+import { buildSessionContext, formatSessionContext, CTE_METHODOLOGY } from "./lib/hooks/session-lifecycle.js"
 import { checkConstraints } from "./lib/hooks/tool-guard.js"
 import { buildEnvVars } from "./lib/hooks/env-inject.js"
 import { createTools } from "./lib/tools/index.js"
@@ -85,10 +85,18 @@ const server: Plugin = (async (ctx) => {
                         service: "cpp-refactory",
                         level: "info",
                         message:
-                            "⚠ Session ending — remember to update state/ and evolution/CHANGELOG.md (Constraint #4)",
+                            "⚠ Session ending — remember to update state/ files and ledger before closing.",
                     },
                 })
             }
+        },
+
+        // --- System prompt tail: inject CTE methodology ---
+        "experimental.chat.system.transform": async (
+            _input: { sessionID?: string },
+            output: { system: string[] }
+        ) => {
+            output.system.push(CTE_METHODOLOGY)
         },
 
         // --- Tool guard: block cpp-refactory tools if not installed ---

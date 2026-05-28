@@ -32,55 +32,89 @@ export function buildSessionContext(projectDir: string): SessionContext {
     }
 }
 
-// ── Methodology injection ───────────────────────────────────────────
-// This is the core reasoning framework. Not rules — a way of thinking.
-// Injected into every session so the AI internalizes multi-source
-// triangulation as its default approach to understanding C++ code.
+// ── CTE Methodology ─────────────────────────────────────────────────
+// Code Triangulation Engineering — a reasoning framework, not rules.
+// Exported for injection into system prompt tail via experimental.chat.system.transform.
 
-const METHODOLOGY = `
-[cpp-refactory] 多源交叉验证方法论（Multi-source Triangulation）
+export const CTE_METHODOLOGY = `
+# CTE — Code Triangulation Engineering
 
-你对 C++ 代码的每一个判断都应该由多个信息源支撑。单一来源会骗你。
+面对不透明的遗留 C++ 代码，如何系统性地建立可靠认知，然后安全地改变它。
 
-信息源及其盲区：
-- grep/Bash 搜索 → 看到的是文本模式，不懂语义（模板特化、宏展开、虚函数分发、命名空间别名都会漏掉或误报）
-- Read 原始代码 → 大文件（>500行）会超出注意力窗口，丢失结构感
-- AST 工具（clang_ast_*） → 精确的语义理解，但依赖 compile_commands.json
-- codegraph（callers/callees/impact/context） → 符号级关系图谱，看到跨文件的调用链和影响范围
-- cpp-scan / cpp-seam-finder / cpp-bigfile-map → 项目级和文件级的结构化概览
-- clang-tidy / cppcheck → 质量信号，但既有告警可能成百上千，需要增量对比
+## 核心原则
 
-推理模式：
-1. 先明确"我想知道什么"（函数边界？影响范围？全局依赖？风险等级？）
-2. 找到能回答这个问题的 2-3 个工具，组合使用
-3. 交叉比对结果 — 一致则可信度高，不一致则需要第三个来源仲裁
+1. **单源不可信** — 任何单一信息源都有盲区。结论须 ≥2 个独立层级交叉确认。
+2. **语义 > 文本** — C++ 真相在语义层（类型/继承/模板/宏展开），文本匹配是起点不是终点。
+3. **地图 > 领土** — 大文件先建地图再导航，直接读原始代码会丢失结构感。
+4. **量化 > 感觉** — 工具给你数字（行数/复杂度/调用方数），数字给你判断力。
+5. **增量 > 全量** — 遗留项目有成千既有告警，只看你引入的增量。
 
-典型组合：
-- 找函数边界 → codegraph callees + clang_ast_list_functions（AST 精确行号）+ cpp-bigfile-map（段落上下文）
-- 评估爆炸半径 → codegraph impact（跨文件影响）+ clang_ast_virtual_calls（虚函数分发）+ cpp-seam-finder（接缝分类）
-- 理解大文件 → cpp-bigfile-map（结构地图，先看全貌）→ 只 Read 需要的段落 → codegraph callers（这个函数被谁调用）
-- 确认全局状态 → clang_ast_globals（AST 精确分类）+ cpp-seam-finder（启发式补充）+ codegraph context（上下游依赖）
-- 验证变更安全 → cpp-pipeline（编译+测试+静态分析）+ cpp-quality-gate check（只看新增问题）
+## 信息源层级
 
-关键原则：
-- 不要用一个 grep 就下结论 — 它可能漏掉 80% 的真实情况
-- 不要 Read 整个大文件 — 用地图导航到需要的段落
-- 不确定时，问另一个工具来验证
-- 工具之间结论矛盾时，优先信任 AST > codegraph > 正则 > grep
-`
+信任度从低到高。高层否定低层时信高层，低层否定高层时怀疑低层。
+
+| 层级 | 来源 | 看到什么 | 盲区 |
+|------|------|---------|------|
+| L1 | grep/rg | 文本模式 | 不懂语义（模板/宏/虚函数/命名空间） |
+| L2 | cpp-scan / bigfile-map / seam-finder | 结构骨架、规模排行 | 启发式，边界可能偏移 |
+| L3 | clang_ast_* | 精确函数边界、圈复杂度、链接类型 | 依赖 compile_commands.json |
+| L4 | codegraph callers/callees/impact | 跨文件调用链、影响范围 | 索引可能过时 |
+| L5 | clang-tidy / cppcheck / quality-gate | 静态分析、增量质量变化 | 既有告警噪声大 |
+| L6 | 编译 / 测试 / pipeline / characterize | 实际行为、等价性证明 | 测试覆盖不全时无法证明等价 |
+
+## 推理模式
+
+1. **明确问题** — 边界？影响？依赖？风险？验证？
+2. **选源组合** — ≥2 个层级，查决策表选推荐组合
+3. **交叉比对** — 一致则行动；矛盾则信高层或引入第三源仲裁
+4. **降级标注** — 高层不可用时降级，但标注置信度（高/中/低）
+5. **行为验证** — 每次变更后回到 L6 确认安全
+
+## 决策表
+
+| 场景 | 推荐组合 | 降级方案 |
+|------|---------|---------|
+| 陌生项目 | L2(cpp-scan) → L4(codegraph status) | L2 单独，标注"无索引" |
+| 大文件(>500行) | L2(bigfile-map) → Read 段落 → L4(callers) | L2 + L1(grep)，标注"无关系图" |
+| 抽取函数 | L3(AST边界) + L4(callers) + L2(段落) | L2 + L1，标注"边界可能偏移" |
+| 改全局变量 | L3(globals分类) + L4(impact) + L6(characterize) | L2(seam-finder) + L1，标注"30%误报" |
+| 清理#ifdef | L3(macro_jungle) + L2(seam-finder) + L1(clang -E) | L2 + L1，标注"无AST确认" |
+| 评估重构方案 | L4(impact量化) + L3(虚调用) + L5(baseline) | L4 + L2，标注"无质量基线" |
+| 改完代码 | L6(pipeline) + L5(quality-gate check) | L6仅编译，标注"无测试覆盖" |
+
+## 置信度
+
+| 等级 | 条件 | 行动 |
+|------|------|------|
+| 高(≥80%) | ≥2 个 L3+ 来源一致 | 可以行动 |
+| 中(50-80%) | 仅低层来源或来源分歧 | 行动但标注风险 |
+| 低(<50%) | 仅 L1/L2 或前置条件不满足 | 不行动，先获取更多信息 |
+
+## 反模式
+
+- 一个 grep 就下结论 → 至少 2 层交叉验证
+- Read 整个大文件 → 先建地图再导航
+- 凭经验判断影响范围 → codegraph impact 量化
+- 改完不验证 → pipeline + quality-gate 提供证据
+- 全量看告警 → quality-gate baseline + check 只看增量
+- 高层不可用就停 → 降级 + 标注置信度
+- 不标注置信度 → 每次判断附带高/中/低
+- 同一来源验证两次 → 必须跨层级
+`.trim()
 
 /**
  * Format session context for injection into conversation.
+ * CTE methodology is injected separately via experimental.chat.system.transform.
  */
 export function formatSessionContext(ctx: SessionContext): string {
-    const parts: string[] = [METHODOLOGY.trim()]
+    const parts: string[] = []
 
     if (ctx.status === "notInstalled") {
-        parts.push(`\n[cpp-refactory] cpp_refactory not installed in this project. Call cpp-bootstrap tool to initialize.`)
+        parts.push(`[cpp-refactory] cpp_refactory not installed in this project. Call cpp-bootstrap tool to initialize.`)
         return parts.join("\n")
     }
 
-    parts.push(`\n[cpp-refactory] Session context loaded.`)
+    parts.push(`[cpp-refactory] Session context loaded.`)
 
     if (ctx.stateFiles.refactorState) {
         parts.push(`\n## REFACTOR_STATE\n${ctx.stateFiles.refactorState}`)
