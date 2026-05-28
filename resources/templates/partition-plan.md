@@ -3,7 +3,7 @@
 > 文件：`{文件路径}`
 > 总行数：{N} 行
 > C++ 标准：{CPP_STANDARD}
-> 架构来源：{graphify / 手动分析}
+> 架构来源：{codegraph / 手动分析}
 > 日期：{YYYY-MM-DD}
 
 ---
@@ -14,7 +14,7 @@
 - **可用现代特性**：{列出该版本下可用的关键特性}
 - **禁用特性**：{列出不可用的特性}
 - **历史经验**：{mempalace 检索结果摘要 / 无命中}
-- **架构 god nodes**：{来自 graphify 的 god nodes 列表 / 手动分析结果}
+- **架构 god nodes**：{来自 codegraph_impact 的 god nodes 列表 / 手动分析结果}
 
 ---
 

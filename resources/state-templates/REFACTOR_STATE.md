@@ -9,7 +9,7 @@
 - **C++ 标准**：{由 cpp-scan.sh 检测}
 - **总文件数/行数**：{由 cpp-scan.sh 统计}
 - **构建系统**：{Makefile / CMake / 自研}
-- **架构来源**：{graphify / 手动分析 / 未执行}
+- **架构来源**：{codegraph / 手动分析 / 未执行}
 - **初始化日期**：{YYYY-MM-DD}
 
 ## 当前进度

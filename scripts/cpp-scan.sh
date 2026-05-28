@@ -350,7 +350,7 @@ main() {
     echo "  后续步骤："
     echo "  1. 根据 CPP_STANDARD 确认版本兼容性约束"
     echo "  2. 对 TOP 巨型文件执行 cpp-seam-finder.sh 进行接缝分析"
-    echo "  3. 尝试 graphify update $TARGET 获取架构级依赖图"
+    echo "  3. 使用 codegraph 获取架构级依赖图 (codegraph_context / codegraph_impact)"
     echo ""
     echo "  建议将本报告重定向到文件："
     echo "  bash cpp-scan.sh {项目路径} > state/scan-report.txt"

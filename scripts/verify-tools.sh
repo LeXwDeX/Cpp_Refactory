@@ -84,7 +84,7 @@ check "scan-build"    scan-build --help
 # =============================================================================
 banner "L3 知识层"
 # =============================================================================
-check "graphify"      graphify --help
+check "codegraph"     codegraph --help
 check "ast-grep"      ast-grep --version
 check "ctags"         ctags --version
 check "global"        global --version

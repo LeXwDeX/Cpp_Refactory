@@ -86,12 +86,9 @@ for t in gcovr lcov; do verify "$t"; done
 banner "L3 知识层"
 # =============================================================================
 
-# --- graphify (via pipx) ---
-apt-get install -y pipx python3-venv
-pipx install graphifyy || warn "graphify 安装失败，可能需要手动处理"
-# pipx 安装到 ~/.local/bin，确保 PATH 包含
-export PATH="${PATH}:${HOME}/.local/bin:/root/.local/bin"
-verify "graphify"
+# --- codegraph (via npm) ---
+npm install -g @anthropic/codegraph 2>/dev/null || warn "codegraph 安装失败，可能需要手动处理"
+verify "codegraph"
 
 # --- ast-grep ---
 # 内网环境：需预先下载预编译二进制到本机，然后放到 /opt/rust-bins/ 或直接安装。
