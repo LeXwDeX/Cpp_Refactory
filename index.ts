@@ -12,6 +12,8 @@ const CPP_REFACTORY_TOOLS = new Set([
     "cpp-bootstrap",
     "cpp-characterize",
     "cpp-ast-cache",
+    "cpp-diagnose",
+    "cpp-pipeline",
     "ledger-init",
     "ledger-wave-add",
     "ledger-batch-add",

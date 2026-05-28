@@ -155,5 +155,22 @@ export function createTools(projectDir: string): Record<string, ToolDefinition> 
             {},
             () => ["list"]
         ),
+
+        "cpp-diagnose": shellTool(
+            "diagnose.sh",
+            "一键诊断 cpp_refactory 环境：检测工具链、compile_commands.json、Docker/MCP 连通性，生成结构化诊断报告",
+            { project: schema.optional(schema.string()) },
+            (args, dir) => [args.project || dir]
+        ),
+
+        "cpp-pipeline": shellTool(
+            "pipeline-verify.sh",
+            "重构流水线验证阶段：编译/测试/静态分析验证，返回结构化结果供流水线状态机消费",
+            {
+                project: schema.optional(schema.string()),
+                stage: schema.optional(schema.string()),
+            },
+            (args, dir) => [args.project || dir, args.stage || "verify"]
+        ),
     }
 }
