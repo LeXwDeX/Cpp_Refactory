@@ -293,7 +293,7 @@ generate_report() {
         # ── 8. Suggested Cut Points ──────────────────
         echo "## 8. Suggested Cut Points (启发式建议)"
         echo ""
-        echo "> 基于段落边界 + 函数边界。**最终决策**应结合 \`gitnexus_context\` 的依赖分析。"
+        echo "> 基于段落边界 + 函数边界。**最终决策**应结合 \`codegraph_codegraph_context\` 的依赖分析。"
         echo ""
 
         local cut_target=$((SECTION_LINES * 2))
@@ -338,7 +338,7 @@ generate_report() {
         echo "1. **浏览结构**：直接看本 map（§2 段落表 + §4 上帝函数）"
         echo "2. **精读片段**：\`Read offset=<start> limit=<N>\`，从 §段号 取行号"
         echo "3. **精确边界 + 圈复杂度**：\`clang_ast_list_functions(file=\"$SOURCE_ABS\", min_lines=N)\`"
-        echo "4. **依赖与影响**：\`gitnexus_context(name=\"<函数>\")\` + \`gitnexus_impact(target=\"<函数>\", direction=\"upstream\")\`"
+        echo "4. **依赖与影响**：\`codegraph_codegraph_context(task=\"<函数>\")\` + \`codegraph_codegraph_impact(symbol=\"<函数>\")\`"
         echo "5. **重构计划**：从 §8 切分点生成 \`PARTITION_LEDGER.md\` 的批次"
         echo ""
 

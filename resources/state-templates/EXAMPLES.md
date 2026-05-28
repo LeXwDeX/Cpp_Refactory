@@ -63,7 +63,7 @@
 - **验证步骤**：
   1. 编译：`cmake --build build --target legacy_unit_tests`
   2. 测试：`./build/tests/legacy_unit_tests --gtest_filter=Parser.*`
-  3. impact 校验：`gitnexus_detect_changes`
+  3. impact 校验：`codegraph_codegraph_impact`
 - **验证结果**：未执行
 - **耗时**：-
 

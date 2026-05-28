@@ -7,12 +7,12 @@ const __dirname = path.dirname(__filename)
 
 /**
  * Resolve the scripts directory path.
- * In dev: plugin/scripts/
- * In prod (dist): ../scripts/ relative to dist/
+ * In dev: __dirname = <root>/lib/utils -> 2 ups to <root>/scripts
+ * In prod (dist): tsup bundles to single dist/index.js, __dirname = <root>/dist -> 1 up to <root>/scripts
  */
 export function getScriptsDir(): string {
-    // Try dist layout first (running from dist/utils/paths.js)
-    const distCandidate = path.resolve(__dirname, "..", "..", "scripts")
+    // Try dist layout first (tsup single-file bundle: dist/index.js)
+    const distCandidate = path.resolve(__dirname, "..", "scripts")
     if (fs.existsSync(distCandidate)) {
         return distCandidate
     }
@@ -22,22 +22,26 @@ export function getScriptsDir(): string {
         return devCandidate
     }
     // Fallback: relative to package root
-    return path.resolve(__dirname, "..", "..", "scripts")
+    return path.resolve(__dirname, "..", "scripts")
 }
 
 /**
  * Resolve the resources directory path.
+ * In dev: __dirname = <root>/lib/utils -> 2 ups to <root>/resources
+ * In prod (dist): tsup bundles to single dist/index.js, __dirname = <root>/dist -> 1 up to <root>/resources
  */
 export function getResourcesDir(): string {
-    const distCandidate = path.resolve(__dirname, "..", "..", "resources")
+    // Try dist layout first (tsup single-file bundle: dist/index.js)
+    const distCandidate = path.resolve(__dirname, "..", "resources")
     if (fs.existsSync(distCandidate)) {
         return distCandidate
     }
+    // Dev layout (running from lib/utils/paths.ts)
     const devCandidate = path.resolve(__dirname, "..", "..", "resources")
     if (fs.existsSync(devCandidate)) {
         return devCandidate
     }
-    return path.resolve(__dirname, "..", "..", "resources")
+    return path.resolve(__dirname, "..", "resources")
 }
 
 /**

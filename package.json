@@ -1,7 +1,7 @@
 {
     "$schema": "https://json.schemastore.org/package.json",
     "name": "opencode-cpp-refactory",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "type": "module",
     "description": "OpenCode plugin for AI-assisted C++ legacy code refactoring with MCP-driven safety nets",
     "main": "./dist/index.js",

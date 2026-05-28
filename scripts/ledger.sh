@@ -191,12 +191,12 @@ cmd_partition_add() {
 - **风险**：$risk
 - **依赖 Partitions**：-
 - **重构策略**：未填写
-- **影响分析**：未执行（运行 \`gitnexus_impact\` 后填写）
+- **影响分析**：未执行（运行 \`codegraph_codegraph_impact\` 后填写）
 - **特征化测试**：未填写
 - **验证步骤**：
   1. 编译：未填写
   2. 测试：未填写
-  3. impact 校验：\`gitnexus_detect_changes\`
+  3. impact 校验：\`codegraph_codegraph_impact\`
 - **验证结果**：未执行
 - **耗时**：-
 - **备注**：
