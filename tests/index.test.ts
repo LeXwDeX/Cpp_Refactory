@@ -111,11 +111,248 @@ describe("plugin integration", () => {
         await assert.rejects(
             async () => {
                 await (result["tool.execute.before"] as Function)(
-                    { tool: "cpp-scan" },
+                    { tool: "cpp-scan", sessionID: "s1", callID: "c1" },
                     { args: { target: "." } }
                 )
             },
             { message: /not installed|bootstrap/ }
         )
+    })
+
+    it("tool.execute.before skips non-cpp-refactory tools", async () => {
+        const mockCtx = {
+            project: { id: "test" },
+            client: { app: { log: async () => true }, session: { prompt: async () => ({}) } },
+            $: async () => ({ stdout: "", exitCode: 0 }),
+            directory: tmpDir,
+            worktree: tmpDir,
+        }
+
+        const result = await pluginFactory(mockCtx as any)
+
+        // Should NOT throw for non-cpp-refactory tools
+        await (result["tool.execute.before"] as Function)(
+            { tool: "some-other-tool", sessionID: "s1", callID: "c1" },
+            { args: {} }
+        )
+    })
+
+    it("tool.execute.before skips cpp-bootstrap (allowed without install)", async () => {
+        const mockCtx = {
+            project: { id: "test" },
+            client: { app: { log: async () => true }, session: { prompt: async () => ({}) } },
+            $: async () => ({ stdout: "", exitCode: 0 }),
+            directory: tmpDir,
+            worktree: tmpDir,
+        }
+
+        const result = await pluginFactory(mockCtx as any)
+
+        // Should NOT throw for bootstrap
+        await (result["tool.execute.before"] as Function)(
+            { tool: "cpp-bootstrap", sessionID: "s1", callID: "c1" },
+            { args: {} }
+        )
+    })
+
+    it("tool.execute.before skips cpp-diagnose (allowed without install)", async () => {
+        const mockCtx = {
+            project: { id: "test" },
+            client: { app: { log: async () => true }, session: { prompt: async () => ({}) } },
+            $: async () => ({ stdout: "", exitCode: 0 }),
+            directory: tmpDir,
+            worktree: tmpDir,
+        }
+
+        const result = await pluginFactory(mockCtx as any)
+
+        // Should NOT throw for diagnose
+        await (result["tool.execute.before"] as Function)(
+            { tool: "cpp-diagnose", sessionID: "s1", callID: "c1" },
+            { args: {} }
+        )
+    })
+
+    it("tool.execute.before allows cpp-scan when state exists and logs warnings", async () => {
+        // Create state directory so checkConstraints passes
+        const stateDir = path.join(tmpDir, ".cpp_refactory", "state")
+        fs.mkdirSync(stateDir, { recursive: true })
+        fs.writeFileSync(path.join(stateDir, "REFACTOR_STATE.md"), "# State")
+        fs.writeFileSync(path.join(stateDir, "PARTITION_LEDGER.md"), "# Ledger")
+        // Write TOOL_GAPS with an OPEN gap to trigger warning
+        fs.writeFileSync(path.join(stateDir, "TOOL_GAPS.md"), "### GAP-001\n状态: OPEN\n")
+
+        const logs: any[] = []
+        const mockCtx = {
+            project: { id: "test" },
+            client: {
+                app: { log: async (input: any) => { logs.push(input.body); return true } },
+                session: { prompt: async () => ({}) },
+            },
+            $: async () => ({ stdout: "", exitCode: 0 }),
+            directory: tmpDir,
+            worktree: tmpDir,
+        }
+
+        const result = await pluginFactory(mockCtx as any)
+
+        // Should NOT throw since state exists
+        await (result["tool.execute.before"] as Function)(
+            { tool: "cpp-scan", sessionID: "s1", callID: "c1" },
+            { args: { target: "." } }
+        )
+
+        // Should have logged a warning about open tool gaps
+        assert.ok(logs.some(l => l.level === "warn" && l.message.includes("open tool gap")))
+    })
+
+    it("tool.execute.before provides AST routing advice for analysis tools", async () => {
+        // Create state directory
+        const stateDir = path.join(tmpDir, ".cpp_refactory", "state")
+        fs.mkdirSync(stateDir, { recursive: true })
+        fs.writeFileSync(path.join(stateDir, "REFACTOR_STATE.md"), "# State")
+        fs.writeFileSync(path.join(stateDir, "PARTITION_LEDGER.md"), "# Ledger")
+        fs.writeFileSync(path.join(stateDir, "TOOL_GAPS.md"), "# Gaps")
+
+        const logs: any[] = []
+        const mockCtx = {
+            project: { id: "test" },
+            client: {
+                app: { log: async (input: any) => { logs.push(input.body); return true } },
+                session: { prompt: async () => ({}) },
+            },
+            $: async () => ({ stdout: "", exitCode: 0 }),
+            directory: tmpDir,
+            worktree: tmpDir,
+        }
+
+        const result = await pluginFactory(mockCtx as any)
+
+        // Call with an analysis tool and target — no compile_commands.json → should warn about regex fallback
+        await (result["tool.execute.before"] as Function)(
+            { tool: "cpp-seam-finder", sessionID: "s1", callID: "c1" },
+            { args: { target: path.join(tmpDir, "main.cpp") } }
+        )
+
+        // Should have logged AST routing warning about regex fallback
+        assert.ok(logs.some(l => l.level === "warn" && l.message.includes("AST路由")))
+    })
+
+    it("tool.execute.before skips AST advice for non-analysis tools", async () => {
+        const stateDir = path.join(tmpDir, ".cpp_refactory", "state")
+        fs.mkdirSync(stateDir, { recursive: true })
+        fs.writeFileSync(path.join(stateDir, "REFACTOR_STATE.md"), "# State")
+        fs.writeFileSync(path.join(stateDir, "PARTITION_LEDGER.md"), "# Ledger")
+        fs.writeFileSync(path.join(stateDir, "TOOL_GAPS.md"), "# Gaps")
+
+        const logs: any[] = []
+        const mockCtx = {
+            project: { id: "test" },
+            client: {
+                app: { log: async (input: any) => { logs.push(input.body); return true } },
+                session: { prompt: async () => ({}) },
+            },
+            $: async () => ({ stdout: "", exitCode: 0 }),
+            directory: tmpDir,
+            worktree: tmpDir,
+        }
+
+        const result = await pluginFactory(mockCtx as any)
+
+        // cpp-characterize is NOT an analysis tool
+        await (result["tool.execute.before"] as Function)(
+            { tool: "cpp-characterize", sessionID: "s1", callID: "c1" },
+            { args: { target: "." } }
+        )
+
+        // Should NOT have AST routing log
+        assert.ok(!logs.some(l => l.message?.includes("AST路由")))
+    })
+
+    it("event hook handles session.idle", async () => {
+        const logs: any[] = []
+        const mockCtx = {
+            project: { id: "test" },
+            client: {
+                app: { log: async (input: any) => { logs.push(input.body); return true } },
+                session: { prompt: async () => ({}) },
+            },
+            $: async () => ({ stdout: "", exitCode: 0 }),
+            directory: tmpDir,
+            worktree: tmpDir,
+        }
+
+        const result = await pluginFactory(mockCtx as any)
+        await (result.event as Function)({
+            event: { type: "session.idle", properties: {} },
+        })
+
+        assert.ok(logs.some(l => l.message.includes("Session ending")))
+    })
+
+    it("event hook ignores unknown event types", async () => {
+        const logs: any[] = []
+        const mockCtx = {
+            project: { id: "test" },
+            client: {
+                app: { log: async (input: any) => { logs.push(input.body); return true } },
+                session: { prompt: async () => ({}) },
+            },
+            $: async () => ({ stdout: "", exitCode: 0 }),
+            directory: tmpDir,
+            worktree: tmpDir,
+        }
+
+        const result = await pluginFactory(mockCtx as any)
+        // Should not throw
+        await (result.event as Function)({
+            event: { type: "unknown.event", properties: {} },
+        })
+    })
+
+    it("shell.env hook handles empty cwd (falls back to directory)", async () => {
+        const mockCtx = {
+            project: { id: "test" },
+            client: { app: { log: async () => true }, session: { prompt: async () => ({}) } },
+            $: async () => ({ stdout: "", exitCode: 0 }),
+            directory: tmpDir,
+            worktree: tmpDir,
+        }
+
+        const result = await pluginFactory(mockCtx as any)
+        const input = { cwd: "" }
+        const output = { env: {} as Record<string, string> }
+        await (result["shell.env"] as Function)(input, output)
+
+        assert.ok(output.env.CPP_REFACTORY_ROOT)
+    })
+
+    it("event hook session.created logs product status advice for initialized project", async () => {
+        // Create state so it's "ready"
+        const stateDir = path.join(tmpDir, ".cpp_refactory", "state")
+        fs.mkdirSync(stateDir, { recursive: true })
+        fs.writeFileSync(path.join(stateDir, "REFACTOR_STATE.md"), "# State")
+        fs.writeFileSync(path.join(stateDir, "PARTITION_LEDGER.md"), "# Ledger")
+        fs.writeFileSync(path.join(stateDir, "TOOL_GAPS.md"), "# Gaps")
+
+        const logs: any[] = []
+        const mockCtx = {
+            project: { id: "test" },
+            client: {
+                app: { log: async (input: any) => { logs.push(input.body); return true } },
+                session: { prompt: async () => ({}) },
+            },
+            $: async () => ({ stdout: "", exitCode: 0 }),
+            directory: tmpDir,
+            worktree: tmpDir,
+        }
+
+        const result = await pluginFactory(mockCtx as any)
+        await (result.event as Function)({
+            event: { type: "session.created", properties: { id: "sess-2" } },
+        })
+
+        // Should log product status with analysis mode info
+        assert.ok(logs.some(l => l.message?.includes("产品状态") || l.message?.includes("分析模式")))
     })
 })

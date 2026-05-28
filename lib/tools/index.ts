@@ -172,5 +172,15 @@ export function createTools(projectDir: string): Record<string, ToolDefinition> 
             },
             (args, dir) => [args.project || dir, args.stage || "verify"]
         ),
+
+        "cpp-quality-gate": shellTool(
+            "quality-gate.sh",
+            "增量质量门禁：记录 baseline、对比变更后的警告/错误/测试增量，支持自定义阈值",
+            {
+                action: schema.string(),
+                project: schema.optional(schema.string()),
+            },
+            (args, dir) => [args.action, args.project || dir]
+        ),
     }
 }

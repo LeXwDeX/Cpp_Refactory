@@ -181,5 +181,84 @@ describe("diagnose", () => {
             assert.ok(typeof report.humanSummary === "string")
             assert.ok(report.humanSummary.length > 0)
         })
+
+        it("reports valid compile_commands.json with entry counts", async () => {
+            // Create a valid compile_commands.json with actual source files
+            const srcFile = path.join(tmpDir, "main.cpp")
+            fs.writeFileSync(srcFile, "int main() { return 0; }")
+
+            const db = [
+                {
+                    directory: tmpDir,
+                    file: "main.cpp",
+                    arguments: ["g++", "-c", "main.cpp", "-o", "main.o"],
+                },
+                {
+                    directory: tmpDir,
+                    file: "main.cpp",
+                    arguments: ["g++", "-c", "main.cpp", "-o", "main2.o"],
+                },
+            ]
+            fs.writeFileSync(
+                path.join(tmpDir, "compile_commands.json"),
+                JSON.stringify(db)
+            )
+
+            const report = await runDiagnosis(tmpDir)
+            assert.equal(report.compileCommands.status, "valid")
+            assert.equal(report.compileCommands.entryCount, 2)
+            assert.ok(report.humanSummary.includes("条目数: 2"))
+            assert.ok(report.humanSummary.includes("有效路径:"))
+        })
+
+        it("reports failed status for invalid_json compile_commands", async () => {
+            fs.writeFileSync(
+                path.join(tmpDir, "compile_commands.json"),
+                "not valid json{{{"
+            )
+
+            const report = await runDiagnosis(tmpDir)
+            assert.equal(report.compileCommands.status, "invalid_json")
+            assert.equal(report.ok, false)
+            assert.ok(report.humanSummary.includes("✗"))
+        })
+
+        it("reports failed status for empty compile_commands", async () => {
+            fs.writeFileSync(
+                path.join(tmpDir, "compile_commands.json"),
+                "[]"
+            )
+
+            const report = await runDiagnosis(tmpDir)
+            assert.equal(report.compileCommands.status, "empty")
+            assert.equal(report.ok, false)
+        })
+
+        it("reports warnings for path_mismatch compile_commands", async () => {
+            const mismatchDb = [
+                {
+                    directory: "/nonexistent/path",
+                    file: "src/main.cpp",
+                    arguments: ["g++", "-c", "src/main.cpp"],
+                },
+            ]
+            fs.writeFileSync(
+                path.join(tmpDir, "compile_commands.json"),
+                JSON.stringify(mismatchDb)
+            )
+
+            const report = await runDiagnosis(tmpDir)
+            assert.equal(report.compileCommands.status, "path_mismatch")
+            assert.ok(report.humanSummary.includes("建议:"))
+        })
+
+        it("includes tool version in summary when available", async () => {
+            const report = await runDiagnosis(tmpDir)
+            // bash should be available with a version
+            const bashTool = report.tools.find(t => t.name === "bash")
+            if (bashTool?.available && bashTool?.version) {
+                assert.ok(report.humanSummary.includes(bashTool.version))
+            }
+        })
     })
 })

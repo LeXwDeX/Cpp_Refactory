@@ -12,7 +12,7 @@ OpenCode plugin for AI-assisted C++ legacy code refactoring and new feature deve
 │                                                             │
 │  ┌───────────────────────────────────────────────────────┐  │
 │  │  NPM Plugin: opencode-cpp-refactory                   │  │
-│  │  ├── 14 custom tools (bash scripts)                   │  │
+ │  │  ├── 17 custom tools (bash scripts + TS modules)      │  │
 │  │  ├── Event hooks (session / tool-guard / env-inject)  │  │
 │  │  └── MCP client ─────────────────┐                    │  │
 │  └───────────────────────────────────┼────────────────────┘  │
@@ -153,7 +153,7 @@ Open opencode in your C++ project and call the `cpp-bootstrap` tool. If everythi
 
 ## Plugin Tools
 
-These 14 tools are registered by the NPM plugin and available immediately after installation:
+These 17 tools are registered by the NPM plugin and available immediately after installation:
 
 | Tool | Description |
 |------|-------------|

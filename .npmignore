@@ -19,3 +19,9 @@ tests/
 # OpenCode
 .opencode/
 .task_state/
+
+# Internal review artifacts
+REVIEW_*.md
+PRODUCT_REPORT_*.md
+.codegraph/
+coverage/

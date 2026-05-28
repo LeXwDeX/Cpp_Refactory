@@ -1,0 +1,218 @@
+import crypto from "node:crypto"
+
+// ─── Types ───────────────────────────────────────────────────────────
+
+export type IssueType = "god_function" | "global_variable" | "macro_jungle" | "deep_nesting" | "long_parameter_list"
+
+export type Priority = "high" | "medium" | "low"
+
+export interface RefactorTarget {
+    file: string
+    function: string
+    lineCount: number
+    complexity: number
+    issue: IssueType
+    suggestion: string
+}
+
+export interface PlannedTarget extends RefactorTarget {
+    priority: Priority
+    estimatedEffort?: number // hours
+    risk: "low" | "medium" | "high"
+}
+
+export interface RefactorPlan {
+    id: string
+    timestamp: string
+    targets: PlannedTarget[]
+    summary: string
+    totalEstimatedEffort: number
+}
+
+export interface CharacterizeInput {
+    file: string
+    function: string
+    returnType: string
+    params: string[]
+}
+
+export interface CharacterizeSkeleton {
+    testFile: string
+    testCode: string
+}
+
+// ─── Priority Assignment ─────────────────────────────────────────────
+
+const ISSUE_PRIORITY: Record<IssueType, Priority> = {
+    god_function: "high",
+    global_variable: "high",
+    macro_jungle: "medium",
+    deep_nesting: "medium",
+    long_parameter_list: "low",
+}
+
+const ISSUE_RISK: Record<IssueType, "low" | "medium" | "high"> = {
+    god_function: "medium",
+    global_variable: "high",
+    macro_jungle: "medium",
+    deep_nesting: "low",
+    long_parameter_list: "low",
+}
+
+function estimateEffort(target: RefactorTarget): number {
+    // Base effort by issue type
+    const baseEffort: Record<IssueType, number> = {
+        god_function: 2,
+        global_variable: 4,
+        macro_jungle: 3,
+        deep_nesting: 1,
+        long_parameter_list: 1,
+    }
+
+    let effort = baseEffort[target.issue]
+
+    // Scale by complexity
+    if (target.complexity > 20) effort *= 2
+    else if (target.complexity > 10) effort *= 1.5
+
+    // Scale by line count
+    if (target.lineCount > 300) effort *= 1.5
+    else if (target.lineCount > 100) effort *= 1.2
+
+    return Math.round(effort * 10) / 10
+}
+
+// ─── Refactor Plan Generation ────────────────────────────────────────
+
+/**
+ * Generate a prioritized refactoring plan from analysis targets.
+ * Sorts by priority (high → medium → low) and estimates effort.
+ */
+export function generateRefactorPlan(targets: RefactorTarget[]): RefactorPlan {
+    const planned: PlannedTarget[] = targets.map((t) => ({
+        ...t,
+        priority: ISSUE_PRIORITY[t.issue] || "low",
+        risk: ISSUE_RISK[t.issue] || "low",
+        estimatedEffort: estimateEffort(t),
+    }))
+
+    // Sort: high priority first, then by effort (smaller first for quick wins)
+    const priorityOrder: Record<Priority, number> = { high: 0, medium: 1, low: 2 }
+    planned.sort((a, b) => {
+        const pDiff = priorityOrder[a.priority] - priorityOrder[b.priority]
+        if (pDiff !== 0) return pDiff
+        return (a.estimatedEffort || 0) - (b.estimatedEffort || 0)
+    })
+
+    const totalEffort = planned.reduce((sum, t) => sum + (t.estimatedEffort || 0), 0)
+
+    // Build summary
+    const highCount = planned.filter((t) => t.priority === "high").length
+    const medCount = planned.filter((t) => t.priority === "medium").length
+    const lowCount = planned.filter((t) => t.priority === "low").length
+
+    const summaryLines: string[] = [
+        `重构计划: ${planned.length} 个目标`,
+        `  高优先级: ${highCount}  中优先级: ${medCount}  低优先级: ${lowCount}`,
+        `  预估总工时: ${Math.round(totalEffort * 10) / 10} 小时`,
+        "",
+        "目标列表:",
+    ]
+
+    for (const t of planned) {
+        summaryLines.push(
+            `  [${t.priority.toUpperCase()}] ${t.file}:${t.function} (${t.issue}, ~${t.estimatedEffort}h, 风险:${t.risk})`
+        )
+        summaryLines.push(`    → ${t.suggestion}`)
+    }
+
+    return {
+        id: crypto.randomUUID(),
+        timestamp: new Date().toISOString(),
+        targets: planned,
+        summary: summaryLines.join("\n"),
+        totalEstimatedEffort: Math.round(totalEffort * 10) / 10,
+    }
+}
+
+// ─── Characterize Skeleton Generation ────────────────────────────────
+
+/**
+ * Generate a gtest characterization skeleton for a C++ function.
+ * Includes normal case + boundary condition test cases.
+ */
+export function generateCharacterizeSkeleton(input: CharacterizeInput): CharacterizeSkeleton {
+    const { file, function: funcName, returnType, params } = input
+
+    // Derive test file name
+    const baseName = file.replace(/\.(cpp|cc|cxx)$/, "")
+    const testFile = `tests/characterize_${baseName.replace(/\//g, "_")}_${funcName}.test.cpp`
+
+    // Build parameter list for function call
+    const paramNames = params.map((p) => {
+        const parts = p.trim().split(/\s+/)
+        return parts[parts.length - 1].replace(/[&*]/g, "")
+    })
+    const callArgs = paramNames.join(", ")
+
+    // Build test code
+    const lines: string[] = []
+    lines.push(`// Characterization test for ${funcName}`)
+    lines.push(`// Source: ${file}`)
+    lines.push(`// Generated by cpp_refactory`)
+    lines.push(`//`)
+    lines.push(`// 目的: 记录 ${funcName} 的当前行为，确保重构不改变语义`)
+    lines.push("")
+    lines.push("#include <gtest/gtest.h>")
+    lines.push(`// #include "${file}"  // TODO: 取消注释以包含被测文件`)
+    lines.push("")
+    lines.push(`// 函数签名: ${returnType} ${funcName}(${params.join(", ")})`)
+    lines.push("")
+
+    // Test 1: Normal case
+    lines.push(`TEST(Characterize_${funcName}, normal_case) {`)
+    lines.push(`    // TODO: 设置测试输入`)
+    for (const p of params) {
+        lines.push(`    // ${p} = <测试值>;`)
+    }
+    lines.push("")
+    if (returnType !== "void") {
+        lines.push(`    // auto result = ${funcName}(${callArgs});`)
+        lines.push(`    // EXPECT_EQ(result, <期望值>);  // 记录当前行为`)
+    } else {
+        lines.push(`    // ${funcName}(${callArgs});`)
+        lines.push(`    // 验证副作用（如有）`)
+    }
+    lines.push(`}`)
+    lines.push("")
+
+    // Test 2: Boundary / edge case
+    lines.push(`TEST(Characterize_${funcName}, boundary_case) {`)
+    lines.push(`    // TODO: 设置边界条件输入`)
+    for (const p of params) {
+        lines.push(`    // ${p} = <边界值>;  // 空值/零值/最大值`)
+    }
+    lines.push("")
+    if (returnType !== "void") {
+        lines.push(`    // auto result = ${funcName}(${callArgs});`)
+        lines.push(`    // EXPECT_EQ(result, <边界期望值>);`)
+    } else {
+        lines.push(`    // ${funcName}(${callArgs});`)
+        lines.push(`    // 验证边界条件下的行为`)
+    }
+    lines.push(`}`)
+    lines.push("")
+
+    // Test 3: Error handling (if applicable)
+    lines.push(`TEST(Characterize_${funcName}, error_handling) {`)
+    lines.push(`    // TODO: 设置异常/错误输入`)
+    lines.push(`    // 验证错误处理行为`)
+    lines.push(`    // EXPECT_NO_THROW(${funcName}(${callArgs}));`)
+    lines.push(`    // 或 EXPECT_THROW(${funcName}(${callArgs}), <异常类型>);`)
+    lines.push(`}`)
+
+    return {
+        testFile,
+        testCode: lines.join("\n"),
+    }
+}

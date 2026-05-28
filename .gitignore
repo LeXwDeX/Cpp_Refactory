@@ -34,6 +34,7 @@ __pycache__/
 
 # Test artifacts
 tests/results/
+coverage/
 
 # MemPalace per-project files (issue #185)
 mempalace.yaml

@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# =============================================================================
+# pre-commit hook — TDD 覆盖率门禁
+#
+# 要求: 语句/行/分支/函数覆盖率 ≥ 89%，否则阻止提交
+# 安装: cp scripts/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+# 跳过: git commit --no-verify
+# =============================================================================
+
+THRESHOLD=89
+
+# ---------- 颜色 ----------
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+echo -e "${BOLD}[cpp-refactory] TDD 覆盖率门禁${NC}"
+echo ""
+
+# ---------- 运行测试 + 覆盖率 ----------
+OUTPUT=$(npx c8 --reporter=text-summary node --import tsx --test 'tests/**/*.test.ts' 'tests/*.test.ts' 2>&1) || {
+    echo -e "${RED}✗ 测试失败，提交被阻止${NC}"
+    echo ""
+    echo "$OUTPUT" | tail -30
+    exit 1
+}
+
+# ---------- 解析覆盖率 ----------
+# c8 text-summary 输出格式:
+#   Statements   : 92.9% ( 2908/3130 )
+#   Branches     : 83.41% ( 352/422 )
+#   Functions    : 94.11% ( 80/85 )
+#   Lines        : 94% ( 2854/3036 )
+
+parse_pct() {
+    echo "$OUTPUT" | grep "$1" | sed 's/.*: *\([0-9.]*\)%.*/\1/'
+}
+
+STMTS=$(parse_pct "Statements")
+BRANCH=$(parse_pct "Branches")
+FUNCS=$(parse_pct "Functions")
+LINES=$(parse_pct "Lines")
+
+# ---------- 检查 ----------
+PASS=true
+
+check() {
+    local name="$1"
+    local pct="$2"
+    # 比较浮点数: 用 awk
+    local ok
+    ok=$(awk "BEGIN { print ($pct >= $THRESHOLD) ? 1 : 0 }")
+    if [[ "$ok" -eq 1 ]]; then
+        echo -e "  ${GREEN}✓${NC} ${name}: ${pct}% (≥${THRESHOLD}%)"
+    else
+        echo -e "  ${RED}✗${NC} ${name}: ${pct}% (<${THRESHOLD}%)"
+        PASS=false
+    fi
+}
+
+check "Statements" "$STMTS"
+check "Branches"   "$BRANCH"
+check "Functions"  "$FUNCS"
+check "Lines"      "$LINES"
+
+echo ""
+
+# ---------- 测试数 ----------
+TEST_COUNT=$(echo "$OUTPUT" | grep "tests " | head -1 | sed 's/.*tests //' || echo "?")
+PASS_COUNT=$(echo "$OUTPUT" | grep "pass " | head -1 | sed 's/.*pass //' || echo "?")
+FAIL_COUNT=$(echo "$OUTPUT" | grep "fail " | head -1 | sed 's/.*fail //' || echo "?")
+
+echo -e "  测试: ${PASS_COUNT} passed / ${FAIL_COUNT} failed / ${TEST_COUNT} total"
+echo ""
+
+# ---------- 判定 ----------
+if [[ "$PASS" == "true" ]]; then
+    echo -e "${GREEN}${BOLD}✓ 覆盖率门禁通过，允许提交${NC}"
+    exit 0
+else
+    echo -e "${RED}${BOLD}✗ 覆盖率门禁未通过 (要求 ≥${THRESHOLD}%)，提交被阻止${NC}"
+    echo -e "  跳过检查: ${YELLOW}git commit --no-verify${NC}"
+    exit 1
+fi

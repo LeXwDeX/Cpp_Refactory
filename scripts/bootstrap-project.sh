@@ -70,7 +70,62 @@ for SRC_NAME in "${!CONFIG_MAP[@]}"; do
     fi
 done
 
-# --- 4. 检查 compile_commands.json ---
+# --- 4. 生成/合并 opencode.json ---
+echo ""
+OPENCODE_JSON="$TARGET_DIR/opencode.json"
+if [[ -f "$OPENCODE_JSON" ]]; then
+    # Merge: add plugin and MCP if missing
+    OPENCODE_JSON_PATH="$OPENCODE_JSON" python3 -c "
+import json, sys, os
+config_path = os.environ['OPENCODE_JSON_PATH']
+try:
+    config = json.load(open(config_path))
+except:
+    config = {}
+changed = False
+if 'plugins' not in config:
+    config['plugins'] = []
+if 'opencode-cpp-refactory' not in config.get('plugins', []):
+    config.setdefault('plugins', []).append('opencode-cpp-refactory')
+    changed = True
+if 'mcp' not in config:
+    config['mcp'] = {}
+if 'clang-ast-mcp' not in config.get('mcp', {}):
+    config['mcp']['clang-ast-mcp'] = {
+        'command': 'docker',
+        'args': ['run', '--rm', '-i', '-v', '\${PWD}:/work', 'cpp-refactory']
+    }
+    changed = True
+if changed:
+    json.dump(config, open(config_path, 'w'), indent=2, ensure_ascii=False)
+    print('  合并: opencode.json (已添加 cpp-refactory 插件和 MCP 配置)')
+else:
+    print('  跳过: opencode.json (配置已完整)')
+" 2>/dev/null
+    if [[ $? -eq 0 ]]; then
+        SKIPPED+=("opencode.json")
+    else
+        echo "  跳过: opencode.json (python3 不可用，请手动配置)"
+        WARNINGS+=("opencode.json 合并失败: python3 不可用")
+    fi
+else
+    # Generate fresh
+    cat > "$OPENCODE_JSON" <<'OCEOF'
+{
+  "plugins": ["opencode-cpp-refactory"],
+  "mcp": {
+    "clang-ast-mcp": {
+      "command": "docker",
+      "args": ["run", "--rm", "-i", "-v", "${PWD}:/work", "cpp-refactory"]
+    }
+  }
+}
+OCEOF
+    echo "  创建: opencode.json (插件 + MCP 配置)"
+    CREATED+=("opencode.json")
+fi
+
+# --- 5. 检查 compile_commands.json ---
 echo ""
 if [[ -f "$TARGET_DIR/compile_commands.json" ]]; then
     echo "✓ compile_commands.json 已存在"
@@ -114,7 +169,8 @@ else
 fi
 echo ""
 echo "下一步建议:"
-echo "  1. 确保 compile_commands.json 已生成"
-echo "  2. 查看 state/REFACTOR_STATE.md 了解重构状态追踪"
-echo "  3. 运行 cpp-scan.sh 扫描项目结构"
+echo "  1. 运行 cpp-diagnose 检测完整环境状态"
+echo "  2. 确保 compile_commands.json 已生成 (bear -- make)"
+echo "  3. 运行 cpp-scan 扫描项目结构"
+echo "  4. 使用 cpp-pipeline 启动重构流水线"
 echo "================================"
