@@ -28,6 +28,7 @@ describe("bootstrap-enhanced", () => {
 
             assert.ok(config.plugins)
             assert.ok(config.plugins.includes("opencode-cpp-refactory"))
+            assert.ok(config.plugins.includes("@vectorize-io/opencode-hindsight"))
             assert.ok(config.mcp)
             assert.ok(config.mcp["clang-ast-mcp"])
             assert.ok(config.mcp["clang-ast-mcp"].command)
@@ -52,6 +53,7 @@ describe("bootstrap-enhanced", () => {
             const config = generateOpenCodeConfig(tmpDir)
             assert.ok(config.plugins.includes("some-other-plugin"))
             assert.ok(config.plugins.includes("opencode-cpp-refactory"))
+            assert.ok(config.plugins.includes("@vectorize-io/opencode-hindsight"))
             assert.equal(config.customSetting, true)
         })
 
@@ -92,6 +94,7 @@ describe("bootstrap-enhanced", () => {
 
             const config = JSON.parse(fs.readFileSync(configPath, "utf-8"))
             assert.ok(config.plugins.includes("opencode-cpp-refactory"))
+            assert.ok(config.plugins.includes("@vectorize-io/opencode-hindsight"))
             assert.ok(config.mcp["clang-ast-mcp"])
         })
 
@@ -111,6 +114,8 @@ describe("bootstrap-enhanced", () => {
                 fs.readFileSync(path.join(tmpDir, "opencode.json"), "utf-8")
             )
             assert.ok(config.plugins.includes("my-plugin"))
+            assert.ok(config.plugins.includes("opencode-cpp-refactory"))
+            assert.ok(config.plugins.includes("@vectorize-io/opencode-hindsight"))
             assert.equal(config.mcp["clang-ast-mcp"].command, "my-cmd")
         })
 
@@ -179,6 +184,7 @@ describe("bootstrap-enhanced", () => {
                 fs.readFileSync(path.join(tmpDir, "opencode.json"), "utf-8")
             )
             assert.ok(config.plugins.includes("opencode-cpp-refactory"))
+            assert.ok(config.plugins.includes("@vectorize-io/opencode-hindsight"))
         })
 
         it("warns about empty compile_commands.json", () => {

@@ -17,11 +17,14 @@ interface OpenCodeConfig {
     [key: string]: any
 }
 
+const CPP_REFACTORY_PLUGIN = "opencode-cpp-refactory"
+const HINDSIGHT_PLUGIN = "@vectorize-io/opencode-hindsight"
+
 // ─── OpenCode Config Generation ──────────────────────────────────────
 
 /**
  * Generate or merge opencode.json configuration.
- * Preserves existing settings, adds cpp-refactory plugin and MCP config.
+ * Preserves existing settings, adds cpp-refactory/Hindsight plugins and MCP config.
  */
 export function generateOpenCodeConfig(projectDir: string): OpenCodeConfig {
     const configPath = path.join(projectDir, "opencode.json")
@@ -36,12 +39,14 @@ export function generateOpenCodeConfig(projectDir: string): OpenCodeConfig {
         }
     }
 
-    // Ensure plugins array exists and includes cpp-refactory
+    // Ensure plugins array exists and includes cpp-refactory + Hindsight memory
     if (!config.plugins) {
         config.plugins = []
     }
-    if (!config.plugins.includes("opencode-cpp-refactory")) {
-        config.plugins.push("opencode-cpp-refactory")
+    for (const plugin of [CPP_REFACTORY_PLUGIN, HINDSIGHT_PLUGIN]) {
+        if (!config.plugins.includes(plugin)) {
+            config.plugins.push(plugin)
+        }
     }
 
     // Ensure MCP config exists for clang-ast-mcp (don't overwrite existing)
@@ -69,7 +74,7 @@ export function generateOpenCodeConfig(projectDir: string): OpenCodeConfig {
  *
  * Creates:
  *   - .cpp_refactory/state/ directory
- *   - opencode.json (with plugin + MCP config)
+ *   - opencode.json (with cpp-refactory + Hindsight plugins and MCP config)
  *   - State template files (if resources available)
  *
  * Returns structured result with created/skipped/warnings/nextSteps.
@@ -146,6 +151,7 @@ export function runBootstrap(projectDir: string): BootstrapResult {
     // 4. Standard next steps
     nextSteps.push("运行 cpp-diagnose 检测完整环境状态")
     nextSteps.push("运行 cpp-scan 扫描项目结构")
+    nextSteps.push("配置 HINDSIGHT_API_URL 以启用 @vectorize-io/opencode-hindsight 记忆插件")
     nextSteps.push("使用 cpp-pipeline 启动重构流水线")
 
     return {

@@ -102,11 +102,11 @@ docker build -t cpp-refactory -f docker/Dockerfile .
 
 ### 第三步：配置 opencode.json
 
-在项目的 `opencode.json` 中同时注册插件和 MCP 服务端：
+在项目的 `opencode.json` 中同时注册 cpp-refactory 插件、Hindsight 记忆插件和 MCP 服务端：
 
 ```json
 {
-  "plugin": ["opencode-cpp-refactory"],
+  "plugin": ["opencode-cpp-refactory", "@vectorize-io/opencode-hindsight"],
   "mcp": {
     "clang-ast": {
       "type": "local",
@@ -125,12 +125,20 @@ docker build -t cpp-refactory -f docker/Dockerfile .
 
 | 字段 | 用途 |
 |---|---|
-| `"plugin"` | 向 opencode 注册 NPM 插件 |
+| `"plugin"` | 向 opencode 注册 cpp-refactory 与 Hindsight NPM 插件 |
 | `"mcp.clang-ast"` | 告诉 opencode 如何启动 MCP 服务端 |
 | `"-v ...:/work:ro"` | 将你的 C++ 项目以只读方式挂载到容器中 |
 | `"docker run -i"` | `-i` 参数**必须** — MCP 通过 stdin/stdout 进行 JSON-RPC 通信 |
 
 > **提示：** 将 `/path/to/your/cpp/project` 替换为你的实际项目路径。容器只读取源文件，所有分析在内存中完成。
+
+启动 opencode 前配置 Hindsight：
+
+```bash
+export HINDSIGHT_API_URL="http://localhost:8888"
+# 使用 Hindsight Cloud 时可选：
+# export HINDSIGHT_API_TOKEN="your-api-key"
+```
 
 ### 第四步：验证
 
@@ -257,12 +265,12 @@ docker compose -f docker/docker-compose.yml run --rm shell
 
 ---
 
-## 可选 MCP 服务端
+## 可选集成
 
-插件还可集成以下可选 MCP 服务端（需在 `opencode.json` 中单独配置）：
+插件还可集成以下可选组件（需在 `opencode.json` 中单独配置）：
 
 - **codegraph** — Tree-sitter 结构查询（影响分析、调用图、符号搜索）
-- **mempalace** — 持久语义记忆 + 知识图谱（跨 session 学习）
+- **Hindsight** — 通过 `@vectorize-io/opencode-hindsight` 提供持久语义记忆（跨 session 学习）
 
 这些服务端不可用时，插件会优雅降级。
 

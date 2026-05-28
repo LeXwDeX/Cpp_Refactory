@@ -4,6 +4,8 @@ import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 
 const execFileAsync = promisify(execFile)
+const CPP_REFACTORY_PLUGIN = "opencode-cpp-refactory"
+const HINDSIGHT_PLUGIN = "@vectorize-io/opencode-hindsight"
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -171,7 +173,7 @@ function checkPluginConfig(projectDir: string): ComponentStatus {
             details: "opencode.json 不存在",
             suggestions: [
                 "安装插件: npm install -g opencode-cpp-refactory",
-                "在 opencode.json 中注册: { \"plugins\": [\"opencode-cpp-refactory\"] }",
+                `在 opencode.json 中注册: { "plugins": ["${CPP_REFACTORY_PLUGIN}", "${HINDSIGHT_PLUGIN}"] }`,
             ],
         }
     }
@@ -180,16 +182,17 @@ function checkPluginConfig(projectDir: string): ComponentStatus {
         const content = fs.readFileSync(configPath, "utf-8")
         const config = JSON.parse(content)
 
-        if (
-            config.plugins &&
-            Array.isArray(config.plugins) &&
-            config.plugins.includes("opencode-cpp-refactory")
-        ) {
+        const plugins = Array.isArray(config.plugins) ? config.plugins : []
+        const missing = [CPP_REFACTORY_PLUGIN, HINDSIGHT_PLUGIN].filter(
+            (plugin) => !plugins.includes(plugin)
+        )
+
+        if (missing.length === 0) {
             return {
                 component: "opencode-cpp-refactory",
                 status: "ok",
                 required: true,
-                details: "插件已注册",
+                details: "cpp-refactory 与 Hindsight 插件已注册",
                 suggestions: [],
             }
         }
@@ -198,9 +201,9 @@ function checkPluginConfig(projectDir: string): ComponentStatus {
             component: "opencode-cpp-refactory",
             status: "misconfigured",
             required: true,
-            details: "opencode.json 中未注册 opencode-cpp-refactory 插件",
+            details: `opencode.json 中未注册必需插件: ${missing.join(", ")}`,
             suggestions: [
-                '在 opencode.json 中添加: { "plugins": ["opencode-cpp-refactory"] }',
+                `在 opencode.json 中添加: { "plugins": ["${CPP_REFACTORY_PLUGIN}", "${HINDSIGHT_PLUGIN}"] }`,
             ],
         }
     } catch {

@@ -184,7 +184,11 @@ describe("config-validator", () => {
 
         it("detects plugin registered in opencode.json", async () => {
             const config = {
-                plugins: ["opencode-cpp-refactory", "other-plugin"],
+                plugins: [
+                    "opencode-cpp-refactory",
+                    "@vectorize-io/opencode-hindsight",
+                    "other-plugin",
+                ],
                 mcp: {
                     "clang-ast-mcp": {
                         command: "docker",
@@ -203,7 +207,7 @@ describe("config-validator", () => {
             )
             assert.ok(pluginComponent)
             assert.equal(pluginComponent!.status, "ok")
-            assert.equal(pluginComponent!.details, "插件已注册")
+            assert.equal(pluginComponent!.details, "cpp-refactory 与 Hindsight 插件已注册")
         })
 
         it("detects invalid JSON in opencode.json", async () => {

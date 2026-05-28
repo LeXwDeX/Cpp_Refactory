@@ -13,7 +13,7 @@
 - **C++ 标准版本**：{检测值}（来源：{CMakeLists.txt / Makefile / 代码推断}）
 - **可用现代特性**：{列出该版本下可用的关键特性}
 - **禁用特性**：{列出不可用的特性}
-- **历史经验**：{mempalace 检索结果摘要 / 无命中}
+- **历史经验**：{Hindsight 检索结果摘要 / 无命中}
 - **架构 god nodes**：{来自 codegraph_impact 的 god nodes 列表 / 手动分析结果}
 
 ---

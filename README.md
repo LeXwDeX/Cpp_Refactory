@@ -102,11 +102,11 @@ The build automatically runs the test suite (42 assertions + E2E refactor tests)
 
 ### Step 3: Configure opencode.json
 
-Add both the plugin and the MCP server to your project's `opencode.json`:
+Add the cpp-refactory plugin, the Hindsight memory plugin, and the MCP server to your project's `opencode.json`:
 
 ```json
 {
-  "plugin": ["opencode-cpp-refactory"],
+  "plugin": ["opencode-cpp-refactory", "@vectorize-io/opencode-hindsight"],
   "mcp": {
     "clang-ast": {
       "type": "local",
@@ -125,12 +125,20 @@ Add both the plugin and the MCP server to your project's `opencode.json`:
 
 | Field | Purpose |
 |---|---|
-| `"plugin"` | Registers the NPM plugin with opencode |
+| `"plugin"` | Registers the cpp-refactory and Hindsight NPM plugins with opencode |
 | `"mcp.clang-ast"` | Tells opencode how to start the MCP server |
 | `"-v ...:/work:ro"` | Mounts your C++ project read-only into the container |
 | `"docker run -i"` | `-i` is **required** — MCP uses stdin/stdout for JSON-RPC |
 
 > **Tip:** Replace `/path/to/your/cpp/project` with your actual project path. The container only reads your source files; all analysis happens in-memory.
+
+Configure Hindsight before starting opencode:
+
+```bash
+export HINDSIGHT_API_URL="http://localhost:8888"
+# Optional for Hindsight Cloud:
+# export HINDSIGHT_API_TOKEN="your-api-key"
+```
 
 ### Step 4: Verify
 
@@ -257,12 +265,12 @@ docker compose -f docker/docker-compose.yml run --rm shell
 
 ---
 
-## Optional MCP Servers
+## Optional Integrations
 
-The plugin also integrates with these optional MCP servers (configure separately in `opencode.json`):
+The plugin also integrates with these optional components (configure separately in `opencode.json`):
 
 - **codegraph** — Tree-sitter structural queries (impact analysis, call graph, symbol search)
-- **mempalace** — Persistent semantic memory + knowledge graph (cross-session learning)
+- **Hindsight** — Persistent semantic memory via `@vectorize-io/opencode-hindsight` (cross-session learning)
 
 The plugin degrades gracefully when they're unavailable.
 

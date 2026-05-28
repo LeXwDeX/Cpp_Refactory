@@ -36,9 +36,9 @@ __pycache__/
 tests/results/
 coverage/
 
-# MemPalace per-project files (issue #185)
-mempalace.yaml
-entities.json
+# Hindsight local data/config files
+.hindsight/
+.hindsight-docker/
 
 # CodeGraph index
 .codegraph/

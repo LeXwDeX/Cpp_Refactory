@@ -52,21 +52,21 @@ export const CTE_METHODOLOGY = `
              /                      \\
             /    铁三角：开发核心      \\
            /                          \\
-    mempalace ———————————————— codegraph
+    Hindsight ———————————————— codegraph
     人类知识 · 约束教训          符号关系 · 调用链
 \`\`\`
 
 | 支柱 | 提供什么 | 缺了会怎样 |
 |------|---------|-----------|
 | **插件本体** (clang_ast_* / cpp-scan / seam-finder / pipeline) | 代码语义真相：精确边界、类型、复杂度、行为验证 | 只能 grep 猜测，不懂模板/宏/虚函数 |
-| **mempalace** (持久记忆) | 人类积累：项目约束、架构决策、历史教训、不能碰的模块 | 不知道历史教训，重复犯错 |
+| **Hindsight** (持久记忆) | 人类积累：项目约束、架构决策、历史教训、不能碰的模块 | 不知道历史教训，重复犯错 |
 | **codegraph** (符号图谱) | 结构关系：谁调用谁、改了什么影响谁、符号爆炸半径 | 不知道影响范围，盲目修改 |
 
 三者之间的信息流：
 - 插件 → codegraph：用 callers/callees/impact 查关系，AST 精确验证 codegraph 的结论
-- 插件 → mempalace：发现约束/踩坑时写入，任务开始时查询已有知识
-- codegraph → mempalace：发现的结构模式（高扇入符号、循环依赖）存入持久记忆
-- mempalace → 插件+codegraph：人工约束指导查询方向和修改边界
+- 插件 → Hindsight：发现约束/踩坑时写入，任务开始时查询已有知识
+- codegraph → Hindsight：发现的结构模式（高扇入符号、循环依赖）存入持久记忆
+- Hindsight → 插件+codegraph：人工约束指导查询方向和修改边界
 
 ## 核心原则
 
@@ -83,7 +83,7 @@ export const CTE_METHODOLOGY = `
 
 | 层级 | 来源 | 看到什么 | 盲区 |
 |------|------|---------|------|
-| L0 | mempalace / 持久记忆 | 人工植入的约束、架构决策、历史教训 | 可能过时 |
+| L0 | Hindsight / 持久记忆 | 人工植入的约束、架构决策、历史教训 | 可能过时 |
 | L1 | grep/rg | 文本模式 | 不懂语义（模板/宏/虚函数/命名空间） |
 | L2 | cpp-scan / bigfile-map / seam-finder | 结构骨架、规模排行 | 启发式，边界可能偏移 |
 | L3 | clang_ast_* | 精确函数边界、圈复杂度、链接类型 | 依赖 compile_commands.json |
@@ -93,7 +93,7 @@ export const CTE_METHODOLOGY = `
 
 ## 推理模式
 
-1. **查记忆** — 开始前查 mempalace 是否有人工植入的约束或历史教训
+1. **查记忆** — 开始前查 Hindsight 是否有人工植入的约束或历史教训
 2. **明确问题** — 边界？影响？依赖？风险？验证？
 3. **选源组合** — ≥2 个层级，查决策表选推荐组合
 4. **交叉比对** — 一致则行动；矛盾则信高层或引入第三源仲裁
@@ -105,7 +105,7 @@ export const CTE_METHODOLOGY = `
 
 | 场景 | 推荐组合 | 降级方案 |
 |------|---------|---------|
-| 陌生项目 | L0(mempalace) + L2(cpp-scan) + L4(codegraph status) | L2 单独，标注"无索引" |
+| 陌生项目 | L0(Hindsight) + L2(cpp-scan) + L4(codegraph status) | L2 单独，标注"无索引" |
 | 大文件(>500行) | L2(bigfile-map) → Read 段落 → L4(callers) | L2 + L1(grep)，标注"无关系图" |
 | 抽取函数 | L3(AST边界) + L4(callers) + L2(段落) + **L6(隔离编译)** | L2 + L1，标注"边界可能偏移" |
 | 改全局变量 | L3(globals分类) + L4(impact) + L6(characterize) | L2(seam-finder) + L1，标注"30%误报" |
@@ -133,8 +133,8 @@ export const CTE_METHODOLOGY = `
 - 不标注置信度 → 每次判断附带高/中/低
 - 同一来源验证两次 → 必须跨层级
 - 提取代码不验证完备性 → 隔离环境编译闭环，失败则补依赖再验
-- 发现约束不保存 → 写入 mempalace，下次 session 可查
-- 不查记忆就开始工作 → 先查 mempalace，可能有人留了关键信息
+- 发现约束不保存 → 写入 Hindsight，下次 session 可查
+- 不查记忆就开始工作 → 先查 Hindsight，可能有人留了关键信息
 `.trim()
 
 /**

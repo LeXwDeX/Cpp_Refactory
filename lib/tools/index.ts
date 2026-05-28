@@ -70,8 +70,8 @@ export function createTools(projectDir: string): Record<string, ToolDefinition> 
             "file size ranking, god functions (>100 lines), include heat map, " +
             "#ifdef jungle index, code smell metrics (raw new/delete, goto, friend, C-casts), " +
             "and codegraph index status. One call replaces ~20 grep commands. " +
-            "CONSTRAINT DISCOVERY: After reviewing the report, save discovered constraints to mempalace " +
-            "(wing=project_name, room=constraints): C++ standard ceiling, platform-specific flags, " +
+            "CONSTRAINT DISCOVERY: After reviewing the report, save discovered constraints to Hindsight " +
+            "(bank_id=project_name::constraints): C++ standard ceiling, platform-specific flags, " +
             "module boundaries revealed by include patterns, and any 'do not touch' zones.",
             { target: schema.string() },
             (args) => [args.target]
@@ -92,7 +92,7 @@ export function createTools(projectDir: string): Record<string, ToolDefinition> 
             "(9) codegraph impact analysis on key symbols if .codegraph index exists. " +
             "NOTE: regex heuristics have ~30% false positive rate. " +
             "Cross-validate with clang_ast_globals MCP tool when compile_commands.json is available. " +
-            "CONSTRAINT DISCOVERY: Save architectural constraints to mempalace (wing=project_name, room=constraints): " +
+            "CONSTRAINT DISCOVERY: Save architectural constraints to Hindsight (bank_id=project_name::constraints): " +
             "global state boundaries that must not be crossed, singleton lifecycle requirements, " +
             "memory ownership patterns, and any 'danger zones' revealed by the analysis.",
             { target: schema.string() },
@@ -111,7 +111,7 @@ export function createTools(projectDir: string): Record<string, ToolDefinition> 
             "Why not grep for functions? grep counts braces wrong with nested lambdas, " +
             "macros that contain braces, and string literals with braces. " +
             "This tool uses ctags for precise boundaries. " +
-            "CONSTRAINT DISCOVERY: Save structural constraints to mempalace (wing=project_name, room=constraints): " +
+            "CONSTRAINT DISCOVERY: Save structural constraints to Hindsight (bank_id=project_name::constraints): " +
             "god functions that must not be modified without full test coverage, " +
             "critical sections revealed by #ifdef patterns, and module boundaries visible in the section map.",
             { file: schema.string() },
