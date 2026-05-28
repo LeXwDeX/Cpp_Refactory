@@ -40,6 +40,46 @@ OpenCode plugin for AI-assisted C++ legacy code refactoring and new feature deve
 
 ---
 
+## Prerequisites
+
+### OpenCode (Fork)
+
+This plugin requires the [OpenCode fork](https://github.com/LeXwDeX/opencode) with plugin and MCP support. Install it first:
+
+**Linux:**
+```bash
+curl -fsSL https://github.com/LeXwDeX/opencode/releases/latest/download/opencode-linux-x64.tar.gz | tar xz
+sudo mv opencode /usr/local/bin/
+```
+
+**macOS (Apple Silicon):**
+```bash
+curl -fsSL -o opencode.zip https://github.com/LeXwDeX/opencode/releases/latest/download/opencode-darwin-arm64.zip
+unzip opencode.zip && sudo mv opencode /usr/local/bin/
+```
+
+**Windows:**
+```powershell
+Invoke-WebRequest -Uri "https://github.com/LeXwDeX/opencode/releases/latest/download/opencode-windows-x64.zip" -OutFile opencode.zip
+Expand-Archive opencode.zip -DestinationPath .
+# Move opencode.exe to a directory in your PATH
+```
+
+Verify installation:
+```bash
+opencode --version
+```
+
+### Node.js
+
+Node.js >= 18.0.0 is required (for the NPM plugin).
+
+### Docker
+
+Docker Engine >= 20.10 is required (for the clang-ast-mcp server).
+
+---
+
 ## Installation
 
 ### Step 1: Install the NPM Plugin

@@ -40,6 +40,46 @@ AI 辅助 C++ 遗留代码重构与新功能开发的 OpenCode 插件，通过 M
 
 ---
 
+## 前置条件
+
+### OpenCode（Fork 版本）
+
+本插件需要 [OpenCode fork](https://github.com/LeXwDeX/opencode)（支持插件和 MCP）。请先安装：
+
+**Linux：**
+```bash
+curl -fsSL https://github.com/LeXwDeX/opencode/releases/latest/download/opencode-linux-x64.tar.gz | tar xz
+sudo mv opencode /usr/local/bin/
+```
+
+**macOS（Apple Silicon）：**
+```bash
+curl -fsSL -o opencode.zip https://github.com/LeXwDeX/opencode/releases/latest/download/opencode-darwin-arm64.zip
+unzip opencode.zip && sudo mv opencode /usr/local/bin/
+```
+
+**Windows：**
+```powershell
+Invoke-WebRequest -Uri "https://github.com/LeXwDeX/opencode/releases/latest/download/opencode-windows-x64.zip" -OutFile opencode.zip
+Expand-Archive opencode.zip -DestinationPath .
+# 将 opencode.exe 移动到 PATH 中的目录
+```
+
+验证安装：
+```bash
+opencode --version
+```
+
+### Node.js
+
+需要 Node.js >= 18.0.0（NPM 插件运行所需）。
+
+### Docker
+
+需要 Docker Engine >= 20.10（clang-ast-mcp 服务端运行所需）。
+
+---
+
 ## 安装
 
 ### 第一步：安装 NPM 插件
