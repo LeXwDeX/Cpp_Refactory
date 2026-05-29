@@ -12,7 +12,7 @@ AI 辅助 C++ 遗留代码重构与新功能开发的 OpenCode 插件，通过 M
 │                                                             │
 │  ┌───────────────────────────────────────────────────────┐  │
 │  │  NPM 插件: opencode-cpp-refactory                     │  │
-│  │  ├── 14 个自定义工具（bash 脚本）                      │  │
+│  │  ├── 17 个自定义工具（bash 脚本 + TS 模块）             │  │
 │  │  ├── 事件钩子（session / tool-guard / env-inject）     │  │
 │  │  └── MCP 客户端 ─────────────────┐                    │  │
 │  └───────────────────────────────────┼────────────────────┘  │
@@ -147,13 +147,13 @@ docker build -t cpp-refactory -f docker/Dockerfile .
 1. 在 OpenCode 中打开 C++ 项目
 2. 调用 `cpp-bootstrap` 初始化 `.cpp_refactory/` 工作区
 3. 调用 `cpp-scan` 扫描项目
-4. 按 6 阶段工作流执行：侦察 → 接缝发现 → 分区规划 → 重构/开发 → 验证 → 归档
+4. 按 6 阶段流水线执行：scan → analyze → plan → execute → verify → record
 
 ---
 
 ## 插件工具
 
-以下 14 个工具由 NPM 插件注册，安装后即可使用：
+以下 17 个工具由 NPM 插件注册，安装后即可使用：
 
 | 工具 | 说明 |
 |------|------|
@@ -171,6 +171,9 @@ docker build -t cpp-refactory -f docker/Dockerfile .
 | `ledger-promote` | 推进分区状态（PLANNED→IN_PROGRESS→VERIFIED→DONE） |
 | `ledger-status` | 查看当前台账概览 |
 | `ledger-list` | 列出所有分区详情 |
+| `cpp-diagnose` | 一键环境诊断：检查 17 项，包括工具链可用性、compile_commands.json 有效性、Docker/MCP 连通性 |
+| `cpp-pipeline` | 重构流水线验证：对变更文件运行编译 + 测试 + 静态分析，返回结构化通过/失败结果 |
+| `cpp-quality-gate` | 增量质量门禁：记录当前警告/测试/错误的基线，然后仅比较并报告新增问题（增量） |
 
 ## MCP 工具（通过 Docker）
 
@@ -253,7 +256,7 @@ docker compose -f docker/docker-compose.yml run --rm shell
 | clang-tidy / clang-format | Ubuntu 24.04 apt | 静态分析 / 代码格式化 |
 | cppcheck | Ubuntu 24.04 apt | 互补静态分析 |
 | bear | Ubuntu 24.04 apt | 生成 compile_commands.json |
-| **clang-ast-mcp** | 本仓库 (`mcp/`) | MCP 服务端，含 5 个 AST 分析工具 |
+| **clang-ast-mcp** | 本仓库 (`mcp/`) | MCP 服务端，含 7 个 AST 分析工具 |
 
 ---
 
@@ -262,7 +265,7 @@ docker compose -f docker/docker-compose.yml run --rm shell
 插件还可集成以下可选 MCP 服务端（需在 `opencode.json` 中单独配置）：
 
 - **codegraph** — Tree-sitter 结构查询（影响分析、调用图、符号搜索）
-- **mempalace** — 持久语义记忆 + 知识图谱（跨 session 学习）
+- **hindsight** — 仿生记忆系统，支持事实提取、语义/图谱/时间召回、反思推理
 
 这些服务端不可用时，插件会优雅降级。
 

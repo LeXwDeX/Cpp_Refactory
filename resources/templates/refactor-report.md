@@ -120,8 +120,7 @@ clang-tidy -p . {修改过的文件}
 如果本次重构发现了可复用的经验，建议归档：
 
 ```
-mempalace_add_drawer:
-  wing="patterns"
-  room="cpp-refactor"
+hindsight_retain:
   content="{可复用的重构经验}"
+  # bank_id 由插件按项目自动管理；可在内容中标注 [patterns][cpp-refactor] 便于后续 hindsight_recall 检索
 ```

@@ -14,6 +14,7 @@ describe("tools", () => {
             assert.ok(tools["cpp-bootstrap"])
             assert.ok(tools["cpp-characterize"])
             assert.ok(tools["cpp-ast-cache"])
+            assert.ok(tools["cpp-extract"])
             assert.ok(tools["ledger-init"])
             assert.ok(tools["ledger-wave-add"])
             assert.ok(tools["ledger-batch-add"])
@@ -70,6 +71,18 @@ describe("tools", () => {
         it("cpp-bootstrap has description", () => {
             const tool = tools["cpp-bootstrap"]
             assert.ok(tool.description)
+            assert.ok(typeof tool.execute === "function")
+        })
+
+        it("cpp-extract has source, function args and optional target/apply", () => {
+            const tool = tools["cpp-extract"]
+            assert.ok(tool.description)
+            assert.ok(tool.args.source)
+            assert.ok(tool.args.function)
+            assert.ok(tool.args.target)
+            assert.ok(tool.args.target.optional)
+            assert.ok(tool.args.apply)
+            assert.ok(tool.args.apply.optional)
             assert.ok(typeof tool.execute === "function")
         })
     })

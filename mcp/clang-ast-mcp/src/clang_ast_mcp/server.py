@@ -1,6 +1,6 @@
 """MCP server entry point for clang-ast-mcp.
 
-Exposes 5 tools for precise C++ AST queries on a given source file
+Exposes 8 tools for precise C++ AST queries on a given source file
 (requires compile_commands.json).
 """
 from __future__ import annotations
@@ -20,6 +20,7 @@ from .analyzers.list_functions import list_functions
 from .analyzers.globals_finder import globals_in_file
 from .analyzers.virtual_calls import virtual_calls
 from .analyzers.macro_jungle import macro_jungle
+from .analyzers.call_graph import callees_in_function, callers_in_file
 
 
 # ---------------------------------------------------------------------------
@@ -263,6 +264,40 @@ def tool_macro_jungle(file: str, compile_db: Optional[str] = None) -> dict:
     db = _resolve_compile_db(compile_db)
     tu = eng.get_tu(src, db, full_bodies=True)
     return macro_jungle(tu, src)
+
+
+@mcp.tool(
+    name="clang_ast_call_graph",
+    description=(
+        "Lightweight call graph analysis for a function. Returns: "
+        "(1) callees - functions called by the target function, "
+        "(2) callers - functions that call the target (same file only). "
+        "For cross-file analysis, use codegraph instead."
+    ),
+)
+@_safe_tool
+def tool_call_graph(
+    file: str,
+    function: str,
+    compile_db: Optional[str] = None,
+) -> dict:
+    eng = get_engine()
+    src = _resolve_source(file)
+    db = _resolve_compile_db(compile_db)
+    tu = eng.get_tu(src, db, full_bodies=True)
+
+    callees = callees_in_function(tu, src, function)
+    callers = callers_in_file(tu, src, function)
+
+    return {
+        "file": src,
+        "function": function,
+        "callees": callees,
+        "callees_count": len(callees),
+        "callers": callers,
+        "callers_count": len(callers),
+        "note": "callers limited to same file; use codegraph for cross-file analysis",
+    }
 
 
 # ---------------------------------------------------------------------------

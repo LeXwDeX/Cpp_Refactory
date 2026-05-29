@@ -41,16 +41,34 @@ def _walk(cursor: cindex.Cursor) -> Iterable[cindex.Cursor]:
 
 
 def _is_short_circuit(cursor: cindex.Cursor) -> bool:
-    """Detect && / || which add to cyclomatic complexity."""
+    """Detect && / || which add to cyclomatic complexity.
+
+    Optimization: only scan tokens that belong to this cursor itself,
+    skipping tokens inside child node extents.  The operator token
+    (&& or ||) sits between the two operands at the top level of the
+    BINARY_OPERATOR node and is NOT contained in any child's extent.
+    This avoids O(n^2) traversal of the entire subtree.
+    """
     if cursor.kind != cindex.CursorKind.BINARY_OPERATOR:
         return False
-    # libclang Python doesn't expose operator directly; peek at tokens
-    tokens = list(cursor.get_tokens())
-    if not tokens:
-        return False
-    # Find operator between operands - simplistic: check for && or ||
-    spellings = [t.spelling for t in tokens]
-    return "&&" in spellings or "||" in spellings
+
+    # Collect child extents to skip
+    child_ranges: list[tuple[int, int]] = []
+    for child in cursor.get_children():
+        if child.extent.start.file is not None:
+            child_ranges.append(
+                (child.extent.start.offset, child.extent.end.offset)
+            )
+
+    for token in cursor.get_tokens():
+        offset = token.extent.start.offset
+        # Skip tokens inside child nodes (operands)
+        if any(s <= offset <= e for s, e in child_ranges):
+            continue
+        if token.spelling in ("&&", "||"):
+            return True
+
+    return False
 
 
 def _cyclomatic(cursor: cindex.Cursor) -> int:

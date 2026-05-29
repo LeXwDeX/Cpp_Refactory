@@ -24,6 +24,7 @@ const CPP_REFACTORY_TOOLS = new Set([
     "cpp-diagnose",
     "cpp-pipeline",
     "cpp-quality-gate",
+    "cpp-extract",
     "ledger-init",
     "ledger-wave-add",
     "ledger-batch-add",
@@ -108,7 +109,7 @@ const server: Plugin = (async (ctx) => {
             if (!CPP_REFACTORY_TOOLS.has(input.tool)) return
             if (input.tool === "cpp-bootstrap" || input.tool === "cpp-diagnose") return
 
-            const result = checkConstraints(directory)
+            const result = checkConstraints(directory, input.tool)
             if (!result.allowed) {
                 throw new Error(
                     `[cpp-refactory] ${result.reasons.join("; ")}`

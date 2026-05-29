@@ -137,8 +137,15 @@ class CompileEntry:
     args: tuple[str, ...]
 
 
+# Path flags whose next argument is a directory that may need resolution
+_PATH_FLAGS: frozenset[str] = frozenset({"-I", "-isystem", "-iquote", "-idirafter", "-L", "-isysroot"})
+
+
 def _normalize_args(raw_args: list[str], directory: str) -> tuple[str, ...]:
-    """剔除 compile_commands 中不能传给 libclang 的参数。
+    """Normalize compile args: resolve relative paths to absolute.
+
+    剔除 compile_commands 中不能传给 libclang 的参数，并将相对路径
+    参数（-I, -isystem 等）转换为绝对路径，消除对 os.chdir() 的依赖。
 
     需要剔除：
     - 第一个参数（编译器路径）
@@ -161,22 +168,50 @@ def _normalize_args(raw_args: list[str], directory: str) -> tuple[str, ...]:
             continue
         if a.startswith("-o"):
             continue
-        out.append(a)
+        
+        # Resolve relative paths for -I, -isystem, etc.
+        if a in _PATH_FLAGS and i + 1 < len(args):
+            out.append(a)
+            path_arg = args[i + 1]
+            if not os.path.isabs(path_arg):
+                path_arg = os.path.normpath(os.path.join(directory, path_arg))
+            out.append(path_arg)
+            skip_next = True
+            continue
+        
+        # Handle -I./include (flag and path in one arg)
+        for flag in _PATH_FLAGS:
+            if a.startswith(flag) and len(a) > len(flag) and not a[len(flag):].startswith("/"):
+                rel_path = a[len(flag):]
+                abs_path = os.path.normpath(os.path.join(directory, rel_path))
+                out.append(f"{flag}{abs_path}")
+                break
+        else:
+            out.append(a)
+    
     return tuple(out)
 
 
 class CompileDatabase:
-    """轻量级 compile_commands.json 解析器。"""
+    """轻量级 compile_commands.json 解析器。
+
+    懒加载：构造时不解析 JSON，首次 get() 调用时才加载。
+    """
 
     def __init__(self, db_path: str | Path):
         self.db_path = Path(db_path).resolve()
         if not self.db_path.exists():
             raise FileNotFoundError(f"compile_commands.json not found: {self.db_path}")
         self._mtime = self.db_path.stat().st_mtime
-        self._entries: dict[str, CompileEntry] = {}
-        self._load()
+        self._entries: dict[str, CompileEntry] | None = None  # Lazy: None = not loaded
+
+    def _ensure_loaded(self) -> None:
+        """Lazy load entries on first access."""
+        if self._entries is None:
+            self._load()
 
     def _load(self) -> None:
+        self._entries = {}
         with open(self.db_path, "r", encoding="utf-8") as f:
             raw = json.load(f)
         for item in raw:
@@ -198,6 +233,8 @@ class CompileDatabase:
         log.info("Loaded %d compile entries from %s", len(self._entries), self.db_path)
 
     def get(self, source_file: str | Path) -> Optional[CompileEntry]:
+        self._ensure_loaded()
+        assert self._entries is not None  # Type guard: _ensure_loaded guarantees this
         path = str(Path(source_file).resolve())
         return self._entries.get(path)
 
@@ -324,16 +361,12 @@ class ASTEngine:
             self._stats["miss"] += 1
             options = self.FULL_PARSE_OPTIONS if full_bodies else self.DEFAULT_PARSE_OPTIONS
             log.info("Parsing TU for %s (full_bodies=%s)", src, full_bodies)
-            cwd_save = os.getcwd()
-            try:
-                os.chdir(entry.directory)
-                tu = self._index.parse(
-                    src,
-                    args=list(entry.args),
-                    options=options,
-                )
-            finally:
-                os.chdir(cwd_save)
+            # No chdir needed: _normalize_args resolves all relative paths to absolute
+            tu = self._index.parse(
+                src,
+                args=list(entry.args),
+                options=options,
+            )
 
             if tu is None:
                 raise RuntimeError(f"libclang failed to parse {src}")

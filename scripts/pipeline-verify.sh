@@ -31,6 +31,10 @@ ERRORS=()
 
 banner() { echo -e "\n${CYAN}${BOLD}── $1 ──${NC}"; }
 
+# set -e 安全的自增：(( VAR++ )) 在 VAR 为 0 时返回退出码 1，会触发 set -e 中止脚本。
+# 用算术赋值替代，退出码恒为 0。
+inc() { local _v="$1"; printf -v "$_v" '%d' "$(( ${!_v} + 1 ))"; }
+
 # =============================================================================
 echo -e "${CYAN}${BOLD}═══════════════════════════════════════════${NC}"
 echo -e "${CYAN}${BOLD}  重构流水线验证 — ${STAGE}${NC}"
@@ -51,32 +55,32 @@ if [[ -f "$PROJECT_DIR/CMakeLists.txt" ]]; then
         echo -e "  检测到 CMake 项目 + build 目录"
         if (cd "$PROJECT_DIR/build" && cmake --build . --target all 2>&1 | tail -5); then
             echo -e "  ${GREEN}✓${NC} 编译成功"
-            ((PASS++))
+            inc PASS
         else
             echo -e "  ${RED}✗${NC} 编译失败"
             ERRORS+=("compilation_failed")
             BUILD_OK=false
-            ((FAIL++))
+            inc FAIL
         fi
     else
         echo -e "  ${YELLOW}⚠${NC} 无 build 目录，跳过编译"
-        ((WARN++))
+        inc WARN
     fi
 elif [[ -f "$PROJECT_DIR/Makefile" ]]; then
     BUILD_SYSTEM="make"
     echo -e "  检测到 Makefile"
     if (cd "$PROJECT_DIR" && make -j$(nproc) 2>&1 | tail -5); then
         echo -e "  ${GREEN}✓${NC} 编译成功"
-        ((PASS++))
+        inc PASS
     else
         echo -e "  ${RED}✗${NC} 编译失败"
         ERRORS+=("compilation_failed")
         BUILD_OK=false
-        ((FAIL++))
+        inc FAIL
     fi
 else
     echo -e "  ${YELLOW}⚠${NC} 未检测到构建系统 (CMakeLists.txt / Makefile)"
-    ((WARN++))
+    inc WARN
 fi
 
 # =============================================================================
@@ -89,27 +93,27 @@ if [[ -d "$PROJECT_DIR/build" ]] && command -v ctest &>/dev/null; then
     echo -e "  尝试 ctest..."
     if (cd "$PROJECT_DIR/build" && ctest --output-on-failure 2>&1 | tail -10); then
         echo -e "  ${GREEN}✓${NC} 测试通过"
-        ((PASS++))
+        inc PASS
     else
         echo -e "  ${RED}✗${NC} 测试失败"
         ERRORS+=("test_failed")
         TEST_OK=false
-        ((FAIL++))
+        inc FAIL
     fi
 elif [[ -f "$PROJECT_DIR/Makefile" ]] && grep -q "test" "$PROJECT_DIR/Makefile" 2>/dev/null; then
     echo -e "  尝试 make test..."
     if (cd "$PROJECT_DIR" && make test 2>&1 | tail -10); then
         echo -e "  ${GREEN}✓${NC} 测试通过"
-        ((PASS++))
+        inc PASS
     else
         echo -e "  ${RED}✗${NC} 测试失败"
         ERRORS+=("test_failed")
         TEST_OK=false
-        ((FAIL++))
+        inc FAIL
     fi
 else
     echo -e "  ${YELLOW}⚠${NC} 未检测到测试框架"
-    ((WARN++))
+    inc WARN
 fi
 
 # =============================================================================
@@ -130,7 +134,7 @@ if command -v clang-tidy &>/dev/null && [[ -f "$PROJECT_DIR/compile_commands.jso
 
     if [[ -z "$CHANGED_FILES" ]]; then
         echo -e "  ${YELLOW}⚠${NC} 无变更文件或不在 git 仓库中，跳过 clang-tidy"
-        ((WARN++))
+        inc WARN
     else
         TIDY_ERRORS=0
         for f in $CHANGED_FILES; do
@@ -140,7 +144,7 @@ if command -v clang-tidy &>/dev/null && [[ -f "$PROJECT_DIR/compile_commands.jso
                     echo -e "  ${GREEN}✓${NC} $f"
                 else
                     echo -e "  ${RED}✗${NC} $f (clang-tidy errors)"
-                    ((TIDY_ERRORS++))
+                    inc TIDY_ERRORS
                 fi
             fi
         done
@@ -148,31 +152,58 @@ if command -v clang-tidy &>/dev/null && [[ -f "$PROJECT_DIR/compile_commands.jso
         if [[ $TIDY_ERRORS -gt 0 ]]; then
             ERRORS+=("clang_tidy_errors:$TIDY_ERRORS")
             ANALYSIS_OK=false
-            ((FAIL++))
+            inc FAIL
         else
-            ((PASS++))
+            inc PASS
         fi
     fi
 else
     echo -e "  ${YELLOW}⚠${NC} clang-tidy 不可用或无 compile_commands.json"
-    ((WARN++))
+    inc WARN
 fi
 
-# cppcheck
+# cppcheck (增量：仅检查变更文件，与 clang-tidy 行为一致)
 if command -v cppcheck &>/dev/null; then
-    echo -e "  运行 cppcheck..."
-    if cppcheck --quiet --error-exitcode=1 "$PROJECT_DIR" 2>&1 | tail -5; then
-        echo -e "  ${GREEN}✓${NC} cppcheck 通过"
-        ((PASS++))
+    echo -e "  运行 cppcheck (增量: 变更文件)..."
+
+    # 复用 clang-tidy 阶段已计算的 CHANGED_FILES；若未计算则此处补算
+    if [[ -z "${CHANGED_FILES:-}" ]]; then
+        if command -v git &>/dev/null && (cd "$PROJECT_DIR" && git rev-parse --git-dir &>/dev/null); then
+            CHANGED_FILES=$(cd "$PROJECT_DIR" && git diff --name-only HEAD 2>/dev/null | grep -E '\.(cpp|cc|cxx|h|hpp)$' || true)
+        fi
+    fi
+
+    if [[ -z "${CHANGED_FILES:-}" ]]; then
+        echo -e "  ${YELLOW}⚠${NC} 无变更文件或不在 git 仓库中，跳过 cppcheck"
+        inc WARN
     else
-        echo -e "  ${RED}✗${NC} cppcheck 发现错误"
-        ERRORS+=("cppcheck_errors")
-        ANALYSIS_OK=false
-        ((FAIL++))
+        CPPCHECK_ERRORS=0
+        for f in $CHANGED_FILES; do
+            FULL_PATH="$PROJECT_DIR/$f"
+            if [[ -f "$FULL_PATH" ]]; then
+                # cppcheck 默认即报告 error 级别问题。用 template 让 severity 出现在
+                # 行首，精确匹配 "error:"；避免把 warning/style 消息正文里的 "error"
+                # 一词误判为错误。(原 --error-exitcode 因管道到 grep 而失效，已移除)
+                if cppcheck --quiet --template='{severity}: {message}' "$FULL_PATH" 2>&1 | grep -q "^error:"; then
+                    echo -e "  ${RED}✗${NC} $f (cppcheck errors)"
+                    inc CPPCHECK_ERRORS
+                else
+                    echo -e "  ${GREEN}✓${NC} $f"
+                fi
+            fi
+        done
+
+        if [[ $CPPCHECK_ERRORS -gt 0 ]]; then
+            ERRORS+=("cppcheck_errors:$CPPCHECK_ERRORS")
+            ANALYSIS_OK=false
+            inc FAIL
+        else
+            inc PASS
+        fi
     fi
 else
     echo -e "  ${YELLOW}⚠${NC} cppcheck 未安装"
-    ((WARN++))
+    inc WARN
 fi
 
 # =============================================================================

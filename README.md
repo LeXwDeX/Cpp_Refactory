@@ -147,7 +147,7 @@ Open opencode in your C++ project and call the `cpp-bootstrap` tool. If everythi
 1. Open a C++ project in OpenCode
 2. Call `cpp-bootstrap` to initialize `.cpp_refactory/` workspace
 3. Call `cpp-scan` to scan the project
-4. Follow the 6-phase workflow: Reconnaissance → Seam Discovery → Partition Planning → Refactoring → Verification → Archive
+4. Follow the 6-phase pipeline: scan → analyze → plan → execute → verify → record
 
 ---
 
@@ -171,6 +171,9 @@ These 17 tools are registered by the NPM plugin and available immediately after 
 | `ledger-promote` | Advance partition status (PLANNED→IN_PROGRESS→VERIFIED→DONE) |
 | `ledger-status` | View current ledger overview |
 | `ledger-list` | List all partition details |
+| `cpp-diagnose` | One-click environment diagnosis: checks 17 items including toolchain availability, compile_commands.json validity, Docker/MCP connectivity |
+| `cpp-pipeline` | Refactoring pipeline verification: runs compilation + tests + static analysis on changed files, returns structured pass/fail result |
+| `cpp-quality-gate` | Incremental quality gate: records baseline of current warnings/tests/errors, then compares and reports ONLY new issues (delta) |
 
 ## MCP Tools (via Docker)
 
@@ -253,7 +256,7 @@ docker compose -f docker/docker-compose.yml run --rm shell
 | clang-tidy / clang-format | Ubuntu 24.04 apt | Static analysis / formatting |
 | cppcheck | Ubuntu 24.04 apt | Complementary static analysis |
 | bear | Ubuntu 24.04 apt | Generate compile_commands.json |
-| **clang-ast-mcp** | This repo (`mcp/`) | MCP server with 5 AST tools |
+| **clang-ast-mcp** | This repo (`mcp/`) | MCP server with 7 AST tools |
 
 ---
 
@@ -262,7 +265,7 @@ docker compose -f docker/docker-compose.yml run --rm shell
 The plugin also integrates with these optional MCP servers (configure separately in `opencode.json`):
 
 - **codegraph** — Tree-sitter structural queries (impact analysis, call graph, symbol search)
-- **mempalace** — Persistent semantic memory + knowledge graph (cross-session learning)
+- **hindsight** — Biomimetic agent memory with fact extraction, semantic/graph/temporal recall, and reflection
 
 The plugin degrades gracefully when they're unavailable.
 

@@ -101,8 +101,9 @@ run_ctags() {
 }
 
 # 提取函数（仅定义，不含 prototype）
+# 从全局变量 CTAGS_RAW 读取，避免重复调用 ctags
 collect_functions() {
-    run_ctags | awk -F'\t' '
+    echo "$CTAGS_RAW" | awk -F'\t' '
     /\tfunction\t/ || /\tmethod\t/ {
         line = ""; endl = ""; sig = ""; class_name = ""; name = $1
         for (i = 4; i <= NF; i++) {
@@ -126,8 +127,9 @@ collect_functions() {
 }
 
 # 提取类型定义
+# 从全局变量 CTAGS_RAW 读取，避免重复调用 ctags
 collect_types() {
-    run_ctags | awk -F'\t' '
+    echo "$CTAGS_RAW" | awk -F'\t' '
     /\t(class|struct|union|namespace|enum)\t/ {
         line = ""; kind = ""
         for (i = 4; i <= NF; i++) {
@@ -158,6 +160,9 @@ collect_includes() {
 
 # ── 输出 markdown ─────────────────────────────────────────
 generate_report() {
+    # 缓存 ctags 输出，避免 collect_functions/collect_types 各自调用一次
+    CTAGS_RAW=$(run_ctags)
+
     local fns_data types_data macros_data includes_data
     fns_data=$(collect_functions)
     types_data=$(collect_types)
