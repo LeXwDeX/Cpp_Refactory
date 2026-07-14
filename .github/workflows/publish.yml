@@ -1,32 +1,52 @@
 name: Publish to npm
 
 on:
-  push:
-    tags:
-      - 'v*'
-  workflow_dispatch:
+    push:
+        tags:
+            - "v*"
+    workflow_dispatch:
+
+permissions:
+    contents: read
+    id-token: write
 
 jobs:
-  publish:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+    publish:
+        name: Build, Test & Publish
+        runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v4
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
+            - name: Setup Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version: "24"
+                  registry-url: "https://registry.npmjs.org"
+                  package-manager-cache: false
 
-      - run: npm ci
+            - name: Install dependencies
+              run: npm ci
 
-      - run: npm test
+            - name: Type check
+              run: npm run typecheck
 
-      - run: npm run build
+            - name: Test
+              run: npm test
 
-      - run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+            - name: Build
+              run: npm run build
+
+            - name: Ensure version is not already published
+              run: |
+                  PKG_NAME=$(node -p "require('./package.json').name")
+                  PKG_VERSION=$(node -p "require('./package.json').version")
+
+                  if npm view "${PKG_NAME}@${PKG_VERSION}" version >/dev/null 2>&1; then
+                    echo "::error::${PKG_NAME}@${PKG_VERSION} is already published. Bump version before publishing."
+                    exit 1
+                  fi
+
+            - name: Publish to npm
+              run: npm publish --access public
